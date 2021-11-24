@@ -32,6 +32,7 @@ char* client_id;
 char* auth_uri;
 char* token_uri;
 const char scope[]="https://www.googleapis.com/auth/firebase.messaging";
+word32 SIG_LEN=256;
 
 void prepareKey(const char* key)
 {
@@ -116,10 +117,17 @@ void prepareKey(const char* key)
 		return;
     }
     free(key_buffer);
+	ret=wc_SignatureGetSize(WC_SIGNATURE_TYPE_RSA_W_ENC, &rsaKey,sizeof(rsaKey));
+	if(ret<0)
+	{
+		ESP_LOGE(TAG,"Error in SignatureGetSize err=%d %s",ret, wc_GetErrorString(ret));
+		return;
+	}
+	SIG_LEN=ret;
     ESP_LOGI(TAG,"RSA Key successfully prepared");
 }
 
-byte* Sign(const char* body, word32* Sig_len)
+int Sign(const char* body, uint32_t Body_len, uint8_t* b64Sig_buf, word32* b64Sig_len)
 {
 	WC_RNG rng;
 	int ret;
@@ -128,35 +136,23 @@ byte* Sign(const char* body, word32* Sig_len)
 	if(ret<0)
 	{
 		ESP_LOGE(TAG,"Error initializing Random generator err=%d %s",ret, wc_GetErrorString(ret));
-		return NULL;
+		return -1;
 	}
-	ESP_LOGI(TAG,"___1");
 	ret=wc_HashGetDigestSize(WC_HASH_TYPE_SHA256);
 	if(ret<0)
 	{
 		ESP_LOGE(TAG,"Error in HashGetDigestSize err=%d %s",ret, wc_GetErrorString(ret));
-		return NULL;
+		return -2;
 	}
-	ESP_LOGI(TAG,"___2");
 	word32 Hash_len=ret;
-	ret=wc_SignatureGetSize(WC_SIGNATURE_TYPE_RSA_W_ENC, &rsaKey,sizeof(rsaKey));
-	if(ret<0)
-	{
-		ESP_LOGE(TAG,"Error in SignatureGetSize err=%d %s",ret, wc_GetErrorString(ret));
-		return NULL;
-	}
-	ESP_LOGI(TAG,"___3");
-	*Sig_len=ret;
 	byte* Hash_buf=malloc(Hash_len);
-	word32 Body_len=strlen(body);
 	ret=wc_Hash(WC_HASH_TYPE_SHA256,(unsigned char*)body,Body_len,Hash_buf,Hash_len);
 	if(ret<0)
 	{
 		ESP_LOGE(TAG,"Error in wc_Hash err=%d %s",ret, wc_GetErrorString(ret));
 		free(Hash_buf);
-		return NULL;
+		return -3;
 	}
-	ESP_LOGI(TAG,"___4");
 	word32 Digest_len=Hash_len+Body_len;
 	byte* Digest_buf=malloc(Digest_len);
 	ret=wc_EncodeSignature(Digest_buf,Hash_buf,Hash_len,SHA256h);
@@ -165,38 +161,38 @@ byte* Sign(const char* body, word32* Sig_len)
 		ESP_LOGE(TAG,"Error in EncodeSignature err=%d %s",ret, wc_GetErrorString(ret));
 		free(Hash_buf);
 		free(Digest_buf);
-		return NULL;
+		return -4;
 	}
-	ESP_LOGI(TAG,"___5");
 	Digest_len=ret;
-	byte* Sig_buf=malloc(*Sig_len);
-	ret=wc_RsaSSL_Sign(Digest_buf,Digest_len,Sig_buf,*Sig_len,&rsaKey,&rng);
+	free(Hash_buf);
+	word32 Sig_len=SIG_LEN;
+	byte* Sig_buf=malloc(Sig_len);
+	ret=wc_RsaSSL_Sign(Digest_buf,Digest_len,Sig_buf,Sig_len,&rsaKey,&rng);
 	if(ret<0)
 	{
 		ESP_LOGE(TAG,"Error in RsaSSL_Sign err=%d %s",ret, wc_GetErrorString(ret));
-		free(Hash_buf);
 		free(Digest_buf);
 		free(Sig_buf);
-		return NULL;
+		return -5;
 	}
-	ESP_LOGI(TAG,"___6");
-	ret=wc_SignatureGenerate(WC_HASH_TYPE_SHA256, WC_SIGNATURE_TYPE_RSA_W_ENC,(unsigned char*)body, Body_len, Sig_buf,Sig_len,&rsaKey,sizeof(rsaKey),&rng);
+	free(Digest_buf);
+	ret=wc_SignatureGenerate(WC_HASH_TYPE_SHA256, WC_SIGNATURE_TYPE_RSA_W_ENC,(unsigned char*)body, Body_len, Sig_buf,&Sig_len,&rsaKey,sizeof(rsaKey),&rng);
 	if(ret<0)
 	{
 		ESP_LOGE(TAG,"Error in SignatureGenerate err=%d %s",ret, wc_GetErrorString(ret));
-		free(Hash_buf);
-		free(Digest_buf);
 		free(Sig_buf);
-		return NULL;
+		return -6;
 	}
-	ESP_LOGI(TAG,"___7");
-	free(Hash_buf);
-	ESP_LOGI(TAG,"___8");
-	free(Digest_buf);
-	ESP_LOGI(TAG,"___9");
+    ret=Base64url_Encode(Sig_buf, Sig_len, b64Sig_buf, b64Sig_len);
+	if(ret<0)
+	{
+		ESP_LOGE(TAG,"Error in b64 Encode signature err=%d %s",ret, wc_GetErrorString(ret));
+		free(Sig_buf);
+		return -7;
+	}
+	free(Sig_buf);
 	wc_FreeRng(&rng);
-	ESP_LOGI(TAG,"__10");
-	return Sig_buf;
+	return *b64Sig_len;
 }
 
 void JsonParse(const char* json_buf)
@@ -266,13 +262,55 @@ void JsonParse(const char* json_buf)
 
 void messagingInit(void)
 {
-	char x[]="test1 of signature";
-	word32 i=0;
-
 	JsonParse(json_start);
-	byte* signature=Sign(x,&i);
-	ESP_LOGI(TAG,"__10");
-	ESP_LOGI(TAG,"Signature length=%d",i);
+}
 
-	//	prepareKey(key_start);
+char* createAssertion(void)
+{
+	char* head=malloc(256);
+	sprintf(head,"{\"alg\":\"RS256\",\"kid\":\"%s\",\"typ\":\"JWT\"}",private_key_id);
+    char* payload=malloc(512);
+    sprintf(payload,"{\"aud\":\"%s\",\"exp\":1637757038,\"iat\":1637753438,\"iss\":\"%s\",\"scope\":\"%s\"}",token_uri,client_email,scope);
+    word32 l=(strlen(head)+strlen(payload)+SIG_LEN)*3/2;
+    uint8_t* b64head=malloc(l);
+    word32 lhead=l;
+    int ret=Base64url_Encode((uint8_t*)head, strlen(head), b64head, &lhead);
+	if(ret<0)
+	{
+		ESP_LOGE(TAG,"Error in createAssertion Encode head err=%d %s",ret, wc_GetErrorString(ret));
+		free(head);
+		free(payload);
+		free(b64head);
+		return NULL;
+	}
+	free(head);
+	b64head[lhead]='.';
+    word32 lpayload=l-lhead-1;
+    ret=Base64url_Encode((uint8_t*)payload, strlen(payload), &b64head[lhead+1], &lpayload);
+	if(ret<0)
+	{
+		ESP_LOGE(TAG,"Error in createAssertion Encode payload err=%d %s",ret, wc_GetErrorString(ret));
+		free(payload);
+		free(b64head);
+		return NULL;
+	}
+	free(payload);
+	b64head[lhead+lpayload+1]='.';
+	uint32_t b64Sig_len=l-lhead-2-lpayload;
+	int assertion_len=Sign((char*)b64head,lhead+1+lpayload,&b64head[lhead+2+lpayload],&b64Sig_len);
+	if(assertion_len<0)
+	{
+		ESP_LOGE(TAG,"Error assertion err=%d",assertion_len);
+		return NULL;
+	}
+	assertion_len+=lhead+2+lpayload;
+	b64head[assertion_len]=0;
+	ESP_LOGI(TAG,"Assertion=%s",b64head);
+	b64head[lhead]=0;
+	b64head[lhead+1+lpayload]=0;
+	ESP_LOGI(TAG,"%d b64head=%s",strlen(((char*)b64head)),((char*)b64head));
+	ESP_LOGI(TAG,"%d b64payload=%s",strlen(&((char*)b64head)[lhead+1]),&((char*)b64head)[lhead+1]);
+	ESP_LOGI(TAG,"%d b64sign=%s",strlen(&((char*)b64head)[lhead+2+lpayload]),&((char*)b64head)[lhead+2+lpayload]);
+
+	return (char*)b64head;
 }

@@ -6,6 +6,8 @@ extern "C" {
 #endif
 
 void messagingInit(void);
+char* createAssertion(void);
+
 
 #ifdef __cplusplus
 }
