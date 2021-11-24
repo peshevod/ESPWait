@@ -14,12 +14,13 @@
 #include "wolfssl/wolfcrypt/asn_public.h"
 #include "wolfssl/wolfcrypt/signature.h"
 #include "wolfssl/error-ssl.h"
+#include "esp_tls.h"
 
 #define LOG_LOCAL_LEVEL ESP_LOG_VERBOSE
 #include "esp_log.h"
 
-extern const unsigned char key_start[] 	asm("_binary_PrivateKey_pem_start");
-extern const unsigned char key_end[]   	asm("_binary_PrivateKey_pem_end");
+extern const char cert_start[] 	asm("_binary_gtsr1_pem_start");
+extern const char cert_end[]   	asm("_binary_gtsr1_pem_end");
 extern const char json_start[]	asm("_binary_ServiceAccount_json_start");
 extern const char json_end[] 	asm("_binary_ServiceAccount_json_end");
 
@@ -49,58 +50,6 @@ void prepareKey(const char* key)
 		return;
 	}
 	uint32_t key_buf_len=ret;
-/*	char* pem_key;
-	bool incl=false;
-	bool body=false;
-	uint16_t start=0;
-	uint16_t last_n=0;
-	uint16_t len=0;
-	uint32_t key_buf_len;
-
-	for(uint16_t i=0;i<l;i++)
-	{
-		char c=key[i];
-		if(c=='\n')
-		{
-			if(!incl)
-			{
-				incl=true;
-				start=i;
-			} else body=true;
-			last_n=i;
-		}
-		else if(c=='-' || c==' ')
-		{
-			if(body)
-			{
-				len=last_n-start;
-				break;
-			}
-			start=0;
-			incl=false;
-			len=0;
-		}
-	}
-	pem_key=malloc(len+1);
-	ESP_LOGI(TAG,"Len with n=%d start=%d",len,start);
-	uint32_t n=0;
-	for(uint32_t i=start;i<len+start;i++)
-	{
-		pem_key[n]=key[i];
-		if(pem_key[n]!=0x0a && pem_key[n]!=0x0d) n++;
-	}
-	pem_key[n]=0;
-	ESP_LOGI(TAG," len without n=%d KEY=%s",n,pem_key);
-	key_buffer=malloc(n+1);
-	key_buf_len=n;
-	if((ret=Base64_Decode((byte*)pem_key, (word32)n, (byte*)key_buffer, (word32*)&key_buf_len))!=0)
-	{
-		ESP_LOGE(TAG,"error decoding PEM key err=%d %s",ret, wc_GetErrorString(ret));
-		free(pem_key);
-		free(key_buffer);
-		return;
-	}
-	free(pem_key);*/
 	ESP_LOGI(TAG,"DER len=%d",key_buf_len);
 
     if((ret = wc_InitRsaKey(&rsaKey, NULL))!=0)
@@ -306,11 +255,93 @@ char* createAssertion(void)
 	assertion_len+=lhead+2+lpayload;
 	b64head[assertion_len]=0;
 	ESP_LOGI(TAG,"Assertion=%s",b64head);
-	b64head[lhead]=0;
-	b64head[lhead+1+lpayload]=0;
-	ESP_LOGI(TAG,"%d b64head=%s",strlen(((char*)b64head)),((char*)b64head));
-	ESP_LOGI(TAG,"%d b64payload=%s",strlen(&((char*)b64head)[lhead+1]),&((char*)b64head)[lhead+1]);
-	ESP_LOGI(TAG,"%d b64sign=%s",strlen(&((char*)b64head)[lhead+2+lpayload]),&((char*)b64head)[lhead+2+lpayload]);
+//	b64head[lhead]=0;
+//	b64head[lhead+1+lpayload]=0;
+//	ESP_LOGI(TAG,"%d b64head=%s",strlen(((char*)b64head)),((char*)b64head));
+//	ESP_LOGI(TAG,"%d b64payload=%s",strlen(&((char*)b64head)[lhead+1]),&((char*)b64head)[lhead+1]);
+//	ESP_LOGI(TAG,"%d b64sign=%s",strlen(&((char*)b64head)[lhead+2+lpayload]),&((char*)b64head)[lhead+2+lpayload]);
 
 	return (char*)b64head;
+}
+
+static void https_post_request(void)
+{
+    char buf[512];
+    int ret, len;
+
+    ESP_LOGI(TAG, "https_request using cacert_buf start-end=%d strlen=",cert_end - cert_start,strlen(cert_start));
+    esp_tls_cfg_t cfg = {
+        .cacert_buf = (const char *) cert_start,
+        .cacert_bytes = cert_end - cert_start,
+    };
+
+    struct esp_tls *tls = esp_tls_conn_http_new(token_uri, &cfg);
+
+    if (tls != NULL) {
+        ESP_LOGI(TAG, "Connection established...");
+    } else {
+        ESP_LOGE(TAG, "Connection failed...");
+        goto exit;
+    }
+
+    sprintf(request,"POST %s HTTP/1.1\r\nHost: oauth2.googleapis.com\r\nUser-Agent: esp-idf/1.0 esp32\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: %d")
+
+    size_t written_bytes = 0;
+    do {
+        ret = esp_tls_conn_write(tls,
+                                 REQUEST + written_bytes,
+                                 sizeof(REQUEST) - written_bytes);
+        if (ret >= 0) {
+            ESP_LOGI(TAG, "%d bytes written", ret);
+            written_bytes += ret;
+        } else if (ret != ESP_TLS_ERR_SSL_WANT_READ  && ret != ESP_TLS_ERR_SSL_WANT_WRITE) {
+            ESP_LOGE(TAG, "esp_tls_conn_write  returned: [0x%02X](%s)", ret, esp_err_to_name(ret));
+            goto exit;
+        }
+    } while (written_bytes < sizeof(REQUEST));
+
+    ESP_LOGI(TAG, "Reading HTTP response...");
+
+    do {
+        len = sizeof(buf) - 1;
+        bzero(buf, sizeof(buf));
+        ret = esp_tls_conn_read(tls, (char *)buf, len);
+
+        if (ret == ESP_TLS_ERR_SSL_WANT_WRITE  || ret == ESP_TLS_ERR_SSL_WANT_READ) {
+            continue;
+        }
+
+        if (ret < 0) {
+            ESP_LOGE(TAG, "esp_tls_conn_read  returned [-0x%02X](%s)", -ret, esp_err_to_name(ret));
+            break;
+        }
+
+        if (ret == 0) {
+            ESP_LOGI(TAG, "connection closed");
+            break;
+        }
+
+        len = ret;
+        ESP_LOGD(TAG, "%d bytes read", len);
+        /* Print response directly to stdout as it is read */
+        for (int i = 0; i < len; i++) {
+            putchar(buf[i]);
+        }
+        putchar('\n'); // JSON output doesn't have a newline at end
+    } while (1);
+
+exit:
+    esp_tls_conn_delete(tls);
+    for (int countdown = 10; countdown >= 0; countdown--) {
+        ESP_LOGI(TAG, "%d...", countdown);
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
+}
+
+
+char* getToken(void)
+{
+	TaskHandle_t xHandle = NULL;
+	xTaskCreate(&https_request_task, "https_post_task", 8192, NULL, 5, &xHandle);
+
 }
