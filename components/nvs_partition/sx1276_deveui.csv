@@ -1,0 +1,3 @@
+key,type,encoding,value
+sx1276_deveui,namespace,,
+N_OF_EUI,data,u8,0

@@ -1,0 +1,24 @@
+/*
+ * My_Pins.h
+ *
+ *  Created on: 5 февр. 2021 г.
+ *      Author: ilya_000
+ */
+
+#ifndef COMPONENTS_S2LP_LIBRARY_INC_MY_PINS_ESPWAIT4_H_
+#define COMPONENTS_S2LP_LIBRARY_INC_MY_PINS_ESPWAIT4_H_
+
+#define PIN_NUM_S2LP_MISO	12
+#define PIN_NUM_S2LP_MOSI	13
+#define PIN_NUM_S2LP_CLK	14
+#define PIN_NUM_S2LP_CSN	15
+#define PIN_NUM_S2LP_SDN	33
+#define PIN_NUM_S2LP_GPIO0	2
+#define PIN_NUM_S2LP_GPIO1	27
+#define PIN_NUM_S2LP_GPIO2	26
+#define PIN_NUM_S2LP_GPIO3	25
+
+
+
+
+#endif /* COMPONENTS_S2LP_LIBRARY_INC_MY_PINS_ESPWAIT4_H_ */
