@@ -732,7 +732,7 @@ static void system_init()
     fill_devices1();
     get_SHAKey();
     messagingInit();
-    createAssertion();
+//    getAuthToken();
 //    print_SHAKey(shaKey);
     while(!init_sdmmc())
     {
@@ -758,6 +758,7 @@ static void system_init()
         ESP_LOGI(TAG, "failed to start https server");
     }
 
+    getAuthToken();
     CppTest* cpptest=CppTest_new();
 
 }

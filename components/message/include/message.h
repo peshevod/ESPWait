@@ -6,7 +6,8 @@ extern "C" {
 #endif
 
 void messagingInit(void);
-char* createAssertion(void);
+char* createContent(int* content_len);
+char* getAuthToken(void);
 
 
 #ifdef __cplusplus

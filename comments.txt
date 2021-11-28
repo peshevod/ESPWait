@@ -1,2 +1,21 @@
-From the directory "components" start git clone --recursive https://github.com/espressif/esp-aws-iot
-Copy to main/certs files certificate.pem.crt private.pem.key
+1. From the directory "components" start git clone --recursive https://github.com/espressif/esp-aws-iot
+2. Copy to main/certs files certificate.pem.crt private.pem.key
+
+3. File d:\Espressif\esp-wolfssl\port\user-settings.h
+
+#define WOLFSSL_TRUST_PEER_CERT
+#undef FP_MAX_BITS
+#define FP_MAX_BITS 8192
+
+#define WOLFSSL_MAX_STRENGTH
+#define WOLFSSL_TLS13
+
+4. File d:\Espressif\esp-wolfssl\wolfssl\wolfssl\wolfcrypt\settings.h
+After #if defined(WOLFSSL_ESPIDF) comment out #define NO_WOLFSSL_DIR
+
+5. On sdcard create certs directory and place here CA certificate for server oauth2.googleapis.com - GlobalSignRootCA.cer
+
+6. D:\Espressif\esp-idf-v4.3\components\esp-tls\esp_tls_wolfssl.c
+   Correct:
+	 wolfTLSv1_2_server_method() -> wolfTLSv1_3_server_method()
+	 wolfTLSv1_2_client_method() -> wolfTLSv1_3_client_method()
