@@ -1,0 +1,181 @@
+static void requestToken(void)
+{
+    char buf[512];
+    char* request[1024];
+    int ret, len;
+    char* content;
+    int content_len;
+    int sockfd;
+    WOLFSSL_CTX* ctx=NULL;
+    WOLFSSL* ssl=NULL;
+    WOLFSSL_METHOD* method;
+    struct  sockaddr_in *servAddr;
+    struct addrinfo *addrinfo;
+
+    wolfSSL_Debugging_ON();
+
+    if ((ret = resolve_host_name(host, strlen(host), &addrinfo)) != ESP_OK) {
+        goto exit;
+    }
+
+
+    /* create and set up socket */
+    sockfd = socket(addrinfo->ai_family, addrinfo->ai_socktype, addrinfo->ai_protocol);
+    servAddr = (struct sockaddr_in *)addrinfo->ai_addr;
+    servAddr->sin_port = htons(443);
+    ESP_LOGI(TAG,"Host=%s Ip-address=%s",host, inet_ntoa(servAddr->sin_addr.s_addr));
+
+
+    /* connect to socket */
+    ret=connect(sockfd,  servAddr, addrinfo->ai_addrlen);
+    if(ret<0)
+    {
+    	ESP_LOGE(TAG,"Socket not connected");
+    	goto exit;
+    }
+
+    /* initialize wolfssl library */
+    wolfSSL_Init();
+    method = wolfTLSv1_3_client_method(); /* use TLS v1.2 or 1.3 */
+
+    /* make new ssl context */
+    if ( (ctx = wolfSSL_CTX_new(method)) == NULL) {
+    	ESP_LOGE(TAG,"Err ctx method");
+    	goto exit;
+    }
+
+    wolfSSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, NULL);
+    ret=wolfSSL_CTX_load_verify_locations(ctx, NULL, "/sdcard/certs");
+    if(ret<0)
+    {
+    	ESP_LOGE(TAG,"Error loading cert %d", ret);
+    	goto exit;
+    }
+/*    ret=wolfSSL_CTX_trust_peer_cert(ctx,"/sdcard/trusted/oauth2.cer",SSL_FILETYPE_ASN1);
+    if(ret<0)
+    {
+    	ESP_LOGE(TAG,"Error loading trusted %d", wolfSSL_get_error(ssl,ret));
+    	goto exit;
+    }*/
+    ret=wolfSSL_CTX_UseSNI(ctx, WOLFSSL_SNI_HOST_NAME, (void *) host, XSTRLEN(host));
+    if(ret<0)
+    {
+    	ESP_LOGE(TAG,"Error loading hostName %d", ret);
+    	goto exit;
+    } else ESP_LOGI(TAG,"Set sni for host %s",host);
+
+    /* make new wolfSSL struct */
+    if ( (ssl = wolfSSL_new(ctx)) == NULL) {
+     	ESP_LOGE(TAG,"Err create ssl");
+     	goto exit;
+    }
+
+    /* Connect wolfssl to the socket, server, then send message */
+    ret=wolfSSL_set_fd(ssl, sockfd);
+    if(ret<0)
+    {
+    	ESP_LOGE(TAG,"Error set fd");
+    	goto exit;
+    }
+
+    wolfSSL_check_domain_name (ssl, host);
+
+    ret=wolfSSL_connect(ssl);
+    if(ret<0)
+    {
+    	ESP_LOGE(TAG,"Error connect %d",ret);
+    	goto exit;
+    }
+
+    content=createContent(&content_len);
+    if(content==NULL)
+    {
+    	ESP_LOGE(TAG,"Unable to perform request: Content is NULL");
+    	goto exit;
+    }
+    sprintf(request,"POST %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: esp-idf/1.0 esp32\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: %d\r\n\r\n",token_uri,host,content_len);
+    int request_len=strlen(request);
+
+    size_t written_bytes = 0;
+	do {
+		ret = wolfSSL_write(ssl,
+								 &request[written_bytes],
+								 request_len-written_bytes);
+		if (ret >= 0) {
+			ESP_LOGI(TAG, "%d header bytes written", ret);
+			written_bytes += ret;
+		} else if (ret != SSL_ERROR_WANT_READ  && ret != SSL_ERROR_WANT_WRITE) {
+			ESP_LOGE(TAG, "wolfSSL_write header  returned: %d", wolfSSL_get_error(ssl,ret));
+		    free(content);
+			goto exit;
+		}
+	} while (written_bytes < request_len);
+
+	written_bytes = 0;
+	do {
+		ret = wolfSSL_write(ssl,
+								 &content[written_bytes],
+								 content_len-written_bytes);
+		if (ret >= 0) {
+			ESP_LOGI(TAG, "%d content bytes written", ret);
+			written_bytes += ret;
+		} else if (ret != SSL_ERROR_WANT_READ  && ret != SSL_ERROR_WANT_WRITE) {
+			ESP_LOGE(TAG, "wolfSSL_write content  returned: %d", wolfSSL_get_error(ssl,ret));
+		    free(content);
+			goto exit;
+		}
+	} while (written_bytes < content_len);
+
+    free(content);
+    ESP_LOGI(TAG, "Reading HTTP response...");
+
+    do {
+        len = sizeof(buf) - 1;
+        bzero(buf, sizeof(buf));
+        ret = wolfSSL_read(ssl, (char *)buf, len);
+
+        if (ret == SSL_ERROR_WANT_WRITE  || ret == SSL_ERROR_WANT_READ) {
+            continue;
+        }
+
+        if (ret < 0) {
+            ESP_LOGE(TAG, "wolfSSL_read  error=%d", wolfSSL_get_error(ssl,ret));
+            break;
+        }
+
+        if (ret == 0) {
+            ESP_LOGI(TAG, "connection closed err=%d", wolfSSL_get_error(ssl,ret));
+            break;
+        }
+
+        len = ret;
+        ESP_LOGD(TAG, "%d bytes read", len);
+        /* Print response directly to stdout as it is read */
+        for (int i = 0; i < len; i++) {
+            putchar(buf[i]);
+        }
+        putchar('\n'); // JSON output doesn't have a newline at end
+    } while (1);
+
+exit:
+    if(ssl!=NULL) wolfSSL_free(ssl);
+    if(ctx!=NULL) wolfSSL_CTX_free(ctx);
+    wolfSSL_Cleanup();
+	while(1)
+	{
+		vTaskDelay(86400);
+	}
+    for (int countdown = 10; countdown >= 0; countdown--) {
+        ESP_LOGI(TAG, "%d...", countdown);
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
+}
+
+
+char* getAuthToken(void)
+{
+	TaskHandle_t xHandle = NULL;
+	xTaskCreatePinnedToCore(&requestToken, "https_post_request task", 10240, NULL, 5, &xHandle,0);
+	return NULL;
+
+}

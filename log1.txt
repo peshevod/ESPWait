@@ -1,0 +1,1331 @@
+I (8336) message.c: Host=oauth2.googleapis.com Ip-address=74.125.131.95
+
+I (8357) wolfssl: wolfSSL Entering wolfSSL_Init
+
+I (8358) wolfssl: wolfSSL Entering wolfCrypt_Init
+
+I (8361) wolfssl: wolfSSL Entering TLSv1_3_client_method_ex
+
+I (8363) wolfssl: wolfSSL Entering wolfSSL_CTX_new_ex
+
+I (8369) wolfssl: wolfSSL Entering wolfSSL_CertManagerNew
+
+I (8375) wolfssl: wolfSSL Leaving WOLFSSL_CTX_new, return 0
+
+I (8382) wolfssl: wolfSSL Entering wolfSSL_CTX_set_verify
+
+I (8388) wolfssl: wolfSSL_CTX_load_verify_locations_ex
+
+I (8397) wolfssl: /sdcard/certs/GTSR1.txt
+
+I (8401) wolfssl: Getting dynamic buffer
+
+I (8404) wolfssl: Processing CA PEM file
+
+I (8407) wolfssl: wolfSSL Entering PemToDer
+
+I (8415) wolfssl: Adding a CA
+
+I (8416) wolfssl: wolfSSL Entering GetExplicitVersion
+
+I (8422) wolfssl: wolfSSL Entering GetSerialNumber
+
+I (8427) wolfssl: Got Cert Header
+
+I (8431) wolfssl: wolfSSL Entering GetAlgoId
+
+I (8436) wolfssl: wolfSSL Entering GetObjectId()
+
+I (8441) wolfssl: Got Algo ID
+
+I (8445) wolfssl: Getting Cert Name
+
+I (8449) wolfssl: Getting Cert Name
+
+I (8454) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_new
+
+I (8459) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_add_entry_by_NID
+
+I (8466) wolfssl: Found place for name entry
+
+I (8471) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_ENTRY_free
+
+I (8478) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_add_entry_by_NID
+
+I (8485) wolfssl: Found place for name entry
+
+I (8490) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_ENTRY_free
+
+I (8497) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_add_entry_by_NID
+
+I (8504) wolfssl: Found place for name entry
+
+I (8509) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_ENTRY_free
+
+I (8515) wolfssl: Getting Cert Name
+
+I (8519) wolfssl: Getting Cert Name
+
+I (8524) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_new
+
+I (8530) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_add_entry_by_NID
+
+I (8537) wolfssl: Found place for name entry
+
+I (8542) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_ENTRY_free
+
+I (8548) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_add_entry_by_NID
+
+I (8555) wolfssl: Found place for name entry
+
+I (8560) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_ENTRY_free
+
+I (8567) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_add_entry_by_NID
+
+I (8574) wolfssl: Found place for name entry
+
+I (8579) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_ENTRY_free
+
+I (8585) wolfssl: Got Subject Name
+
+I (8590) wolfssl: wolfSSL Entering GetAlgoId
+
+I (8595) wolfssl: wolfSSL Entering GetObjectId()
+
+I (8600) wolfssl: Got Key
+
+I (8603) wolfssl: Parsed Past Key
+
+I (8607) wolfssl: wolfSSL Entering DecodeCertExtensions
+
+I (8613) wolfssl: wolfSSL Entering GetObjectId()
+
+I (8619) wolfssl: wolfSSL Entering DecodeKeyUsage
+
+I (8624) wolfssl: wolfSSL Entering GetObjectId()
+
+I (8629) wolfssl: wolfSSL Entering DecodeBasicCaConstraint
+
+I (8635) wolfssl: wolfSSL Entering GetObjectId()
+
+I (8640) wolfssl: wolfSSL Entering DecodeSubjKeyId
+
+I (8646) wolfssl: wolfSSL Entering GetAlgoId
+
+I (8651) wolfssl: wolfSSL Entering GetObjectId()
+
+I (8656) wolfssl:       Parsed new CA
+
+I (8660) wolfssl:       Freeing Parsed CA
+
+I (8664) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_free
+
+I (8670) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_free
+
+I (8676) wolfssl:       Freeing der CA
+
+I (8680) wolfssl:               OK Freeing der CA
+
+I (8685) wolfssl: wolfSSL Leaving AddCA, return 0
+
+I (8690) wolfssl:    Processed a CA
+
+I (8694) wolfssl: Processed at least one valid CA. Other stuff OK
+
+I (8704) wolfssl: /sdcard/certs/GSRootCA.txt
+
+I (8709) wolfssl: Getting dynamic buffer
+
+I (8712) wolfssl: Processing CA PEM file
+
+I (8715) wolfssl: wolfSSL Entering PemToDer
+
+I (8721) wolfssl: Adding a CA
+
+I (8724) wolfssl: wolfSSL Entering GetExplicitVersion
+
+I (8730) wolfssl: wolfSSL Entering GetSerialNumber
+
+I (8735) wolfssl: Got Cert Header
+
+I (8739) wolfssl: wolfSSL Entering GetAlgoId
+
+I (8744) wolfssl: wolfSSL Entering GetObjectId()
+
+I (8749) wolfssl: Got Algo ID
+
+I (8753) wolfssl: Getting Cert Name
+
+I (8757) wolfssl: Getting Cert Name
+
+I (8762) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_new
+
+I (8767) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_add_entry_by_NID
+
+I (8774) wolfssl: Found place for name entry
+
+I (8779) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_ENTRY_free
+
+I (8786) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_add_entry_by_NID
+
+I (8793) wolfssl: Found place for name entry
+
+I (8798) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_ENTRY_free
+
+I (8805) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_add_entry_by_NID
+
+I (8812) wolfssl: Found place for name entry
+
+I (8817) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_ENTRY_free
+
+I (8823) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_add_entry_by_NID
+
+I (8830) wolfssl: Found place for name entry
+
+I (8835) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_ENTRY_free
+
+I (8842) wolfssl: Getting Cert Name
+
+I (8846) wolfssl: Getting Cert Name
+
+I (8850) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_new
+
+I (8856) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_add_entry_by_NID
+
+I (8863) wolfssl: Found place for name entry
+
+I (8868) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_ENTRY_free
+
+I (8875) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_add_entry_by_NID
+
+I (8882) wolfssl: Found place for name entry
+
+I (8887) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_ENTRY_free
+
+I (8894) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_add_entry_by_NID
+
+I (8901) wolfssl: Found place for name entry
+
+I (8906) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_ENTRY_free
+
+I (8912) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_add_entry_by_NID
+
+I (8919) wolfssl: Found place for name entry
+
+I (8924) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_ENTRY_free
+
+I (8931) wolfssl: Got Subject Name
+
+I (8935) wolfssl: wolfSSL Entering GetAlgoId
+
+I (8940) wolfssl: wolfSSL Entering GetObjectId()
+
+I (8945) wolfssl: Got Key
+
+I (8948) wolfssl: Parsed Past Key
+
+I (8952) wolfssl: wolfSSL Entering DecodeCertExtensions
+
+I (8958) wolfssl: wolfSSL Entering GetObjectId()
+
+I (8964) wolfssl: wolfSSL Entering DecodeKeyUsage
+
+I (8969) wolfssl: wolfSSL Entering GetObjectId()
+
+I (8974) wolfssl: wolfSSL Entering DecodeBasicCaConstraint
+
+I (8980) wolfssl: wolfSSL Entering GetObjectId()
+
+I (8986) wolfssl: wolfSSL Entering DecodeSubjKeyId
+
+I (8991) wolfssl: wolfSSL Entering GetAlgoId
+
+I (8996) wolfssl: wolfSSL Entering GetObjectId()
+
+I (9002) wolfssl:       Parsed new CA
+
+I (9005) wolfssl:       Freeing Parsed CA
+
+I (9010) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_free
+
+I (9016) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_free
+
+I (9022) wolfssl:       Freeing der CA
+
+I (9026) wolfssl:               OK Freeing der CA
+
+I (9030) wolfssl: wolfSSL Leaving AddCA, return 0
+
+I (9035) wolfssl:    Processed a CA
+
+I (9040) wolfssl: Processed at least one valid CA. Other stuff OK
+
+I (9047) message.c: Set sni for host oauth2.googleapis.com
+
+I (9053) wolfssl: wolfSSL Entering SSL_new
+
+I (9060) wolfssl: wolfSSL Leaving SSL_new, return 0
+
+I (9063) wolfssl: wolfSSL Entering SSL_set_fd
+
+I (9068) wolfssl: wolfSSL Entering SSL_set_read_fd
+
+I (9073) wolfssl: wolfSSL Leaving SSL_set_read_fd, return 1
+
+I (9080) wolfssl: wolfSSL Entering SSL_set_write_fd
+
+I (9085) wolfssl: wolfSSL Leaving SSL_set_write_fd, return 1
+
+I (9092) wolfssl: wolfSSL Entering wolfSSL_check_domain_name
+
+I (9098) wolfssl: wolfSSL Entering SSL_connect()
+
+I (9103) wolfssl: wolfSSL Entering SendTls13ClientHello
+
+I (9109) wolfssl: Adding signature algorithms extension
+
+I (9115) wolfssl: Adding supported versions extension
+
+I (9121) wolfssl: wolfSSL Entering EccMakeKey
+
+I (9986) wolfssl: wolfSSL Leaving EccMakeKey, return 0
+
+I (9987) wolfssl: growing output buffer
+
+
+
+I (9988) wolfssl: Key Share extension to write
+
+I (9991) wolfssl: Supported Versions extension to write
+
+I (9997) wolfssl: Signature Algorithms extension to write
+
+I (10003) wolfssl: Supported Groups extension to write
+
+I (10009) wolfssl: SNI extension to write
+
+I (10017) wolfssl: Shrinking output buffer
+
+
+
+I (10019) wolfssl: wolfSSL Leaving SendTls13ClientHello, return 0
+
+I (10025) wolfssl: connect state: CLIENT_HELLO_SENT
+
+I (10038) wolfssl: growing input buffer
+
+
+
+I (10039) wolfssl: received record layer msg
+
+I (10040) wolfssl: got HANDSHAKE
+
+I (10044) wolfssl: wolfSSL Entering wolfSSL_get_options
+
+I (10050) wolfssl: wolfSSL Entering DoTls13HandShakeMsg()
+
+I (10056) wolfssl: wolfSSL Entering DoTls13HandShakeMsgType
+
+I (10063) wolfssl: processing server hello
+
+I (10067) wolfssl: wolfSSL Entering DoTls13ServerHello
+
+I (10073) wolfssl: Supported Versions extension received
+
+I (10079) wolfssl: Skipping Supported Versions - already processed
+
+I (10087) wolfssl: Key Share extension received
+
+I (10525) wolfssl: wolfSSL Entering VerifyClientSuite
+
+I (10527) wolfssl: wolfSSL Leaving DoTls13ServerHello, return 0
+
+I (10527) wolfssl: Shrinking input buffer
+
+
+
+I (10531) wolfssl: wolfSSL Leaving DoTls13HandShakeMsgType(), return 0
+
+I (10538) wolfssl: wolfSSL Leaving DoTls13HandShakeMsg(), return 0
+
+I (10545) wolfssl: wolfSSL Entering wolfSSL_connect_TLSv13()
+
+I (10551) wolfssl: connect state: HELLO_AGAIN
+
+I (10556) wolfssl: wolfSSL Entering SendTls13ClientHello
+
+I (10563) wolfssl: Adding signature algorithms extension
+
+I (10568) wolfssl: Adding supported versions extension
+
+I (10575) wolfssl: growing output buffer
+
+
+
+I (10579) wolfssl: Supported Versions extension to write
+
+I (10585) wolfssl: Signature Algorithms extension to write
+
+I (10591) wolfssl: Key Share extension to write
+
+I (10596) wolfssl: Supported Groups extension to write
+
+I (10602) wolfssl: SNI extension to write
+
+I (10611) wolfssl: Shrinking output buffer
+
+
+
+I (10612) wolfssl: wolfSSL Leaving SendTls13ClientHello, return 0
+
+I (10619) wolfssl: connect state: HELLO_AGAIN_REPLY
+
+I (10625) wolfssl: received record layer msg
+
+I (10629) wolfssl: got CHANGE CIPHER SPEC
+
+I (10635) wolfssl: growing input buffer
+
+
+
+I (10639) wolfssl: received record layer msg
+
+I (10643) wolfssl: got HANDSHAKE
+
+I (10647) wolfssl: wolfSSL Entering wolfSSL_get_options
+
+I (10653) wolfssl: wolfSSL Entering DoTls13HandShakeMsg()
+
+I (10659) wolfssl: wolfSSL Entering DoTls13HandShakeMsgType
+
+I (10666) wolfssl: processing server hello
+
+I (10670) wolfssl: wolfSSL Entering DoTls13ServerHello
+
+I (10676) wolfssl: Supported Versions extension received
+
+I (10682) wolfssl: Key Share extension received
+
+I (11119) wolfssl: Skipping Supported Versions - already processed
+
+I (11120) wolfssl: wolfSSL Entering VerifyClientSuite
+
+I (11121) wolfssl: wolfSSL Leaving DoTls13ServerHello, return 0
+
+I (11128) wolfssl: Shrinking input buffer
+
+
+
+I (11133) wolfssl: Derive Early Secret
+
+I (11137) wolfssl: Derive Handshake Secret
+
+I (11142) wolfssl: Derive Client Handshake Secret
+
+I (11147) wolfssl: Derive Server Handshake Secret
+
+I (11153) wolfssl: Derive Client Key
+
+I (11157) wolfssl: Derive Server Key
+
+I (11161) wolfssl: Derive Client IV
+
+I (11165) wolfssl: Derive Server IV
+
+I (11170) wolfssl: wolfSSL Leaving DoTls13HandShakeMsgType(), return 0
+
+I (11177) wolfssl: wolfSSL Leaving DoTls13HandShakeMsg(), return 0
+
+I (11184) wolfssl: growing input buffer
+
+
+
+I (11191) wolfssl: wolfSSL Entering DecryptTls13
+
+I (11205) wolfssl: received record layer msg
+
+I (11205) wolfssl: got HANDSHAKE
+
+I (11206) wolfssl: wolfSSL Entering wolfSSL_get_options
+
+I (11209) wolfssl: wolfSSL Entering DoTls13HandShakeMsg()
+
+I (11215) wolfssl: wolfSSL Entering DoTls13HandShakeMsgType
+
+I (11221) wolfssl: processing encrypted extensions
+
+I (11227) wolfssl: wolfSSL Entering DoTls13EncryptedExtensions
+
+I (11233) wolfssl: wolfSSL Leaving DoTls13EncryptedExtensions, return 0
+
+I (11241) wolfssl: wolfSSL Leaving DoTls13HandShakeMsgType(), return 0
+
+I (11248) wolfssl: wolfSSL Leaving DoTls13HandShakeMsg(), return 0
+
+I (11255) wolfssl: More messages in record
+
+I (11259) wolfssl: Bundled encrypted messages, remove middle pad
+
+I (11266) wolfssl: received record layer msg
+
+I (11271) wolfssl: got HANDSHAKE
+
+I (11275) wolfssl: wolfSSL Entering wolfSSL_get_options
+
+I (11281) wolfssl: wolfSSL Entering DoTls13HandShakeMsg()
+
+I (11287) wolfssl: wolfSSL Entering DoTls13HandShakeMsgType
+
+I (11293) wolfssl: processing certificate
+
+I (11298) wolfssl: wolfSSL Entering DoTls13Certificate
+
+I (11304) wolfssl: wolfSSL Entering ProcessPeerCerts
+
+I (11309) wolfssl: Loading peer's cert chain
+
+I (11314) wolfssl:      Put another cert into chain
+
+I (11320) wolfssl:      Put another cert into chain
+
+I (11325) wolfssl:      Put another cert into chain
+
+I (11330) wolfssl: wolfSSL Entering GetExplicitVersion
+
+I (11336) wolfssl: wolfSSL Entering GetSerialNumber
+
+I (11341) wolfssl: Got Cert Header
+
+I (11345) wolfssl: wolfSSL Entering GetAlgoId
+
+I (11350) wolfssl: wolfSSL Entering GetObjectId()
+
+I (11356) wolfssl: Got Algo ID
+
+I (11360) wolfssl: Getting Cert Name
+
+I (11364) wolfssl: Getting Cert Name
+
+I (11369) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_new
+
+I (11374) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_add_entry_by_NID
+
+I (11382) wolfssl: Found place for name entry
+
+I (11387) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_ENTRY_free
+
+I (11393) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_add_entry_by_NID
+
+I (11400) wolfssl: Found place for name entry
+
+I (11405) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_ENTRY_free
+
+I (11412) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_add_entry_by_NID
+
+I (11419) wolfssl: Found place for name entry
+
+I (11424) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_ENTRY_free
+
+I (11431) wolfssl: Getting Cert Name
+
+I (11435) wolfssl: Getting Cert Name
+
+I (11440) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_new
+
+I (11446) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_add_entry_by_NID
+
+I (11453) wolfssl: Found place for name entry
+
+I (11458) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_ENTRY_free
+
+I (11464) wolfssl: Got Subject Name
+
+I (11469) wolfssl: wolfSSL Entering GetAlgoId
+
+I (11474) wolfssl: wolfSSL Entering GetObjectId()
+
+I (11479) wolfssl: wolfSSL Entering GetObjectId()
+
+I (11484) wolfssl: Got Key
+
+I (11488) wolfssl: Parsed Past Key
+
+I (11492) wolfssl: wolfSSL Entering DecodeCertExtensions
+
+I (11498) wolfssl: wolfSSL Entering GetObjectId()
+
+I (11503) wolfssl: wolfSSL Entering DecodeKeyUsage
+
+I (11509) wolfssl: wolfSSL Entering GetObjectId()
+
+I (11514) wolfssl: DecodeExtKeyUsage
+
+I (11518) wolfssl: wolfSSL Entering GetObjectId()
+
+I (11524) wolfssl: wolfSSL Entering GetObjectId()
+
+I (11529) wolfssl: wolfSSL Entering DecodeBasicCaConstraint
+
+I (11535) wolfssl: wolfSSL Entering GetObjectId()
+
+I (11541) wolfssl: wolfSSL Entering DecodeSubjKeyId
+
+I (11546) wolfssl: wolfSSL Entering GetObjectId()
+
+I (11552) wolfssl: wolfSSL Entering DecodeAuthKeyId
+
+I (11557) wolfssl: wolfSSL Entering GetObjectId()
+
+I (11563) wolfssl: wolfSSL Entering DecodeAuthInfo
+
+I (11568) wolfssl: wolfSSL Entering GetObjectId()
+
+I (11574) wolfssl: wolfSSL Entering GetObjectId()
+
+I (11579) wolfssl: wolfSSL Entering DecodeAltNames
+
+I (11585) wolfssl: wolfSSL Entering GetObjectId()
+
+I (11590) wolfssl: Certificate Policy extension not supported yet.
+
+I (11597) wolfssl: wolfSSL Entering GetObjectId()
+
+I (11602) wolfssl: wolfSSL Entering DecodeCrlDist
+
+I (11607) wolfssl: wolfSSL Entering GetObjectId()
+
+I (11613) wolfssl: wolfSSL Entering GetAlgoId
+
+I (11618) wolfssl: wolfSSL Entering GetObjectId()
+
+I (11623) wolfssl: Checking for trusted peer cert
+
+I (11628) wolfssl: No matching trusted peer cert. Checking CAs
+
+I (11635) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_free
+
+I (11641) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_free
+
+I (11647) wolfssl: wolfSSL Entering GetAlgoId
+
+I (11652) wolfssl: wolfSSL Entering GetObjectId()
+
+I (11658) wolfssl: wolfSSL Entering GetObjectId()
+
+I (11663) wolfssl: wolfSSL Entering GetObjectId()
+
+I (11669) wolfssl: wolfSSL Entering GetObjectId()
+
+I (11674) wolfssl: wolfSSL Entering GetObjectId()
+
+I (11679) wolfssl: wolfSSL Entering GetObjectId()
+
+I (11685) wolfssl: wolfSSL Entering GetObjectId()
+
+I (11690) wolfssl: wolfSSL Entering GetObjectId()
+
+I (11696) wolfssl: wolfSSL Entering GetAlgoId
+
+I (11700) wolfssl: wolfSSL Entering GetObjectId()
+
+I (11706) wolfssl: wolfSSL Entering ConfirmSignature
+
+I (11733) wolfssl: wolfSSL Leaving ConfirmSignature, return 0
+
+I (11734) wolfssl: wolfSSL Entering GetExplicitVersion
+
+I (11735) wolfssl: wolfSSL Entering GetSerialNumber
+
+I (11740) wolfssl: Got Cert Header
+
+I (11744) wolfssl: wolfSSL Entering GetAlgoId
+
+I (11749) wolfssl: wolfSSL Entering GetObjectId()
+
+I (11755) wolfssl: Got Algo ID
+
+I (11759) wolfssl: Getting Cert Name
+
+I (11763) wolfssl: Getting Cert Name
+
+I (11767) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_new
+
+I (11773) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_add_entry_by_NID
+
+I (11781) wolfssl: Found place for name entry
+
+I (11786) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_ENTRY_free
+
+I (11792) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_add_entry_by_NID
+
+I (11799) wolfssl: Found place for name entry
+
+I (11804) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_ENTRY_free
+
+I (11811) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_add_entry_by_NID
+
+I (11818) wolfssl: Found place for name entry
+
+I (11823) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_ENTRY_free
+
+I (11830) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_add_entry_by_NID
+
+I (11837) wolfssl: Found place for name entry
+
+I (11842) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_ENTRY_free
+
+I (11849) wolfssl: Getting Cert Name
+
+I (11853) wolfssl: Getting Cert Name
+
+I (11858) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_new
+
+I (11864) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_add_entry_by_NID
+
+I (11871) wolfssl: Found place for name entry
+
+I (11876) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_ENTRY_free
+
+I (11882) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_add_entry_by_NID
+
+I (11890) wolfssl: Found place for name entry
+
+I (11895) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_ENTRY_free
+
+I (11901) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_add_entry_by_NID
+
+I (11909) wolfssl: Found place for name entry
+
+I (11914) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_ENTRY_free
+
+I (11920) wolfssl: Got Subject Name
+
+I (11924) wolfssl: wolfSSL Entering GetAlgoId
+
+I (11929) wolfssl: wolfSSL Entering GetObjectId()
+
+I (11935) wolfssl: Got Key
+
+I (11938) wolfssl: Parsed Past Key
+
+I (11942) wolfssl: wolfSSL Entering DecodeCertExtensions
+
+I (11948) wolfssl: wolfSSL Entering GetObjectId()
+
+I (11954) wolfssl: wolfSSL Entering DecodeKeyUsage
+
+I (11959) wolfssl: wolfSSL Entering GetObjectId()
+
+I (11964) wolfssl: wolfSSL Entering DecodeBasicCaConstraint
+
+I (11971) wolfssl: wolfSSL Entering GetObjectId()
+
+I (11976) wolfssl: wolfSSL Entering DecodeSubjKeyId
+
+I (11982) wolfssl: wolfSSL Entering GetObjectId()
+
+I (11987) wolfssl: wolfSSL Entering DecodeAuthKeyId
+
+I (11993) wolfssl: wolfSSL Entering GetObjectId()
+
+I (11999) wolfssl: wolfSSL Entering DecodeAuthInfo
+
+I (12003) wolfssl: wolfSSL Entering GetObjectId()
+
+I (12009) wolfssl: wolfSSL Entering GetObjectId()
+
+I (12014) wolfssl: wolfSSL Entering DecodeCrlDist
+
+I (12020) wolfssl: wolfSSL Entering GetObjectId()
+
+I (12025) wolfssl: Certificate Policy extension not supported yet.
+
+I (12032) wolfssl: wolfSSL Entering GetAlgoId
+
+I (12037) wolfssl: wolfSSL Entering GetObjectId()
+
+I (12042) wolfssl: CA found
+
+I (12046) wolfssl: Verified CA from chain and already had it
+
+I (12052) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_free
+
+I (12058) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_free
+
+I (12064) wolfssl: wolfSSL Entering GetAlgoId
+
+I (12069) wolfssl: wolfSSL Entering GetObjectId()
+
+I (12075) wolfssl: wolfSSL Entering GetObjectId()
+
+I (12080) wolfssl: wolfSSL Entering GetObjectId()
+
+I (12086) wolfssl: wolfSSL Entering GetObjectId()
+
+I (12091) wolfssl: wolfSSL Entering GetObjectId()
+
+I (12096) wolfssl: wolfSSL Entering GetObjectId()
+
+I (12102) wolfssl: wolfSSL Entering GetObjectId()
+
+I (12107) wolfssl: wolfSSL Entering GetObjectId()
+
+I (12112) wolfssl: wolfSSL Entering GetObjectId()
+
+I (12118) wolfssl: wolfSSL Entering GetAlgoId
+
+I (12123) wolfssl: wolfSSL Entering GetObjectId()
+
+I (12128) wolfssl: wolfSSL Entering ConfirmSignature
+
+I (12214) wolfssl: wolfSSL Leaving ConfirmSignature, return 0
+
+I (12215) wolfssl: wolfSSL Entering GetExplicitVersion
+
+I (12216) wolfssl: wolfSSL Entering GetSerialNumber
+
+I (12221) wolfssl: Got Cert Header
+
+I (12225) wolfssl: wolfSSL Entering GetAlgoId
+
+I (12230) wolfssl: wolfSSL Entering GetObjectId()
+
+I (12236) wolfssl: Got Algo ID
+
+I (12240) wolfssl: Getting Cert Name
+
+I (12244) wolfssl: Getting Cert Name
+
+I (12248) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_new
+
+I (12254) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_add_entry_by_NID
+
+I (12261) wolfssl: Found place for name entry
+
+I (12266) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_ENTRY_free
+
+I (12273) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_add_entry_by_NID
+
+I (12280) wolfssl: Found place for name entry
+
+I (12285) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_ENTRY_free
+
+I (12292) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_add_entry_by_NID
+
+I (12299) wolfssl: Found place for name entry
+
+I (12304) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_ENTRY_free
+
+I (12311) wolfssl: Getting Cert Name
+
+I (12315) wolfssl: Getting Cert Name
+
+I (12320) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_new
+
+I (12326) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_add_entry_by_NID
+
+I (12333) wolfssl: Found place for name entry
+
+I (12338) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_ENTRY_free
+
+I (12344) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_add_entry_by_NID
+
+I (12352) wolfssl: Found place for name entry
+
+I (12357) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_ENTRY_free
+
+I (12363) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_add_entry_by_NID
+
+I (12371) wolfssl: Found place for name entry
+
+I (12376) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_ENTRY_free
+
+I (12382) wolfssl: Got Subject Name
+
+I (12386) wolfssl: wolfSSL Entering GetAlgoId
+
+I (12391) wolfssl: wolfSSL Entering GetObjectId()
+
+I (12397) wolfssl: Got Key
+
+I (12400) wolfssl: Parsed Past Key
+
+I (12404) wolfssl: wolfSSL Entering DecodeCertExtensions
+
+I (12410) wolfssl: wolfSSL Entering GetObjectId()
+
+I (12416) wolfssl: wolfSSL Entering DecodeKeyUsage
+
+I (12421) wolfssl: wolfSSL Entering GetObjectId()
+
+I (12427) wolfssl: DecodeExtKeyUsage
+
+I (12431) wolfssl: wolfSSL Entering GetObjectId()
+
+I (12436) wolfssl: wolfSSL Entering GetObjectId()
+
+I (12442) wolfssl: wolfSSL Entering GetObjectId()
+
+I (12447) wolfssl: wolfSSL Entering DecodeBasicCaConstraint
+
+I (12453) wolfssl: wolfSSL Entering GetObjectId()
+
+I (12459) wolfssl: wolfSSL Entering DecodeSubjKeyId
+
+I (12464) wolfssl: wolfSSL Entering GetObjectId()
+
+I (12469) wolfssl: wolfSSL Entering DecodeAuthKeyId
+
+I (12475) wolfssl: wolfSSL Entering GetObjectId()
+
+I (12480) wolfssl: wolfSSL Entering DecodeAuthInfo
+
+I (12486) wolfssl: wolfSSL Entering GetObjectId()
+
+I (12491) wolfssl: wolfSSL Entering GetObjectId()
+
+I (12497) wolfssl: wolfSSL Entering DecodeCrlDist
+
+I (12502) wolfssl: wolfSSL Entering GetObjectId()
+
+I (12507) wolfssl: Certificate Policy extension not supported yet.
+
+I (12514) wolfssl: wolfSSL Entering GetAlgoId
+
+I (12519) wolfssl: wolfSSL Entering GetObjectId()
+
+I (12525) wolfssl: CA found
+
+I (12528) wolfssl:      CA boolean set
+
+I (12532) wolfssl:      Extension Key Usage Set
+
+I (12537) wolfssl:      maxPathLen status: set to pathLength
+
+I (12543) wolfssl: Adding CA from chain
+
+I (12548) wolfssl: Adding a CA
+
+I (12551) wolfssl: wolfSSL Entering GetExplicitVersion
+
+I (12557) wolfssl: wolfSSL Entering GetSerialNumber
+
+I (12563) wolfssl: Got Cert Header
+
+I (12567) wolfssl: wolfSSL Entering GetAlgoId
+
+I (12572) wolfssl: wolfSSL Entering GetObjectId()
+
+I (12577) wolfssl: Got Algo ID
+
+I (12581) wolfssl: Getting Cert Name
+
+I (12585) wolfssl: Getting Cert Name
+
+I (12590) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_new
+
+I (12596) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_add_entry_by_NID
+
+I (12603) wolfssl: Found place for name entry
+
+I (12608) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_ENTRY_free
+
+I (12615) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_add_entry_by_NID
+
+I (12622) wolfssl: Found place for name entry
+
+I (12627) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_ENTRY_free
+
+I (12633) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_add_entry_by_NID
+
+I (12641) wolfssl: Found place for name entry
+
+I (12646) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_ENTRY_free
+
+I (12652) wolfssl: Getting Cert Name
+
+I (12657) wolfssl: Getting Cert Name
+
+I (12661) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_new
+
+I (12667) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_add_entry_by_NID
+
+I (12674) wolfssl: Found place for name entry
+
+I (12679) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_ENTRY_free
+
+I (12686) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_add_entry_by_NID
+
+I (12693) wolfssl: Found place for name entry
+
+I (12698) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_ENTRY_free
+
+I (12705) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_add_entry_by_NID
+
+I (12712) wolfssl: Found place for name entry
+
+I (12717) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_ENTRY_free
+
+I (12724) wolfssl: Got Subject Name
+
+I (12728) wolfssl: wolfSSL Entering GetAlgoId
+
+I (12733) wolfssl: wolfSSL Entering GetObjectId()
+
+I (12738) wolfssl: Got Key
+
+I (12742) wolfssl: Parsed Past Key
+
+I (12746) wolfssl: wolfSSL Entering DecodeCertExtensions
+
+I (12752) wolfssl: wolfSSL Entering GetObjectId()
+
+I (12757) wolfssl: wolfSSL Entering DecodeKeyUsage
+
+I (12763) wolfssl: wolfSSL Entering GetObjectId()
+
+I (12768) wolfssl: DecodeExtKeyUsage
+
+I (12772) wolfssl: wolfSSL Entering GetObjectId()
+
+I (12778) wolfssl: wolfSSL Entering GetObjectId()
+
+I (12783) wolfssl: wolfSSL Entering GetObjectId()
+
+I (12788) wolfssl: wolfSSL Entering DecodeBasicCaConstraint
+
+I (12795) wolfssl: wolfSSL Entering GetObjectId()
+
+I (12800) wolfssl: wolfSSL Entering DecodeSubjKeyId
+
+I (12806) wolfssl: wolfSSL Entering GetObjectId()
+
+I (12811) wolfssl: wolfSSL Entering DecodeAuthKeyId
+
+I (12816) wolfssl: wolfSSL Entering GetObjectId()
+
+I (12822) wolfssl: wolfSSL Entering DecodeAuthInfo
+
+I (12827) wolfssl: wolfSSL Entering GetObjectId()
+
+I (12833) wolfssl: wolfSSL Entering GetObjectId()
+
+I (12838) wolfssl: wolfSSL Entering DecodeCrlDist
+
+I (12843) wolfssl: wolfSSL Entering GetObjectId()
+
+I (12849) wolfssl: Certificate Policy extension not supported yet.
+
+I (12856) wolfssl: wolfSSL Entering GetAlgoId
+
+I (12861) wolfssl: wolfSSL Entering GetObjectId()
+
+I (12866) wolfssl: CA found
+
+I (12870) wolfssl:      CA boolean set
+
+I (12874) wolfssl:      Extension Key Usage Set
+
+I (12878) wolfssl:      maxPathLen status: set to pathLength
+
+I (12885) wolfssl:      Parsed new CA
+
+I (12889) wolfssl:      Freeing Parsed CA
+
+I (12893) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_free
+
+I (12899) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_free
+
+I (12905) wolfssl:      Freeing der CA
+
+I (12909) wolfssl:              OK Freeing der CA
+
+I (12914) wolfssl: wolfSSL Leaving AddCA, return 0
+
+I (12920) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_free
+
+I (12925) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_free
+
+I (12931) wolfssl: Verifying Peer's cert
+
+I (12936) wolfssl: wolfSSL Entering GetAlgoId
+
+I (12941) wolfssl: wolfSSL Entering GetObjectId()
+
+I (12947) wolfssl: wolfSSL Entering GetObjectId()
+
+I (12952) wolfssl: wolfSSL Entering GetObjectId()
+
+I (12957) wolfssl: wolfSSL Entering GetObjectId()
+
+I (12963) wolfssl: wolfSSL Entering GetObjectId()
+
+I (12968) wolfssl: wolfSSL Entering GetObjectId()
+
+I (12973) wolfssl: wolfSSL Entering GetObjectId()
+
+I (12979) wolfssl: wolfSSL Entering GetObjectId()
+
+I (12984) wolfssl: wolfSSL Entering GetObjectId()
+
+I (12990) wolfssl: wolfSSL Entering GetObjectId()
+
+I (12995) wolfssl: wolfSSL Entering GetObjectId()
+
+I (13000) wolfssl: wolfSSL Entering GetAlgoId
+
+I (13005) wolfssl: wolfSSL Entering GetObjectId()
+
+I (13011) wolfssl: wolfSSL Entering ConfirmSignature
+
+I (13040) wolfssl: wolfSSL Leaving ConfirmSignature, return 0
+
+I (13040) wolfssl: wolfSSL Entering GetExplicitVersion
+
+I (13041) wolfssl: wolfSSL Entering GetSerialNumber
+
+I (13046) wolfssl: Got Cert Header
+
+I (13051) wolfssl: wolfSSL Entering GetAlgoId
+
+I (13056) wolfssl: wolfSSL Entering GetObjectId()
+
+I (13061) wolfssl: Got Algo ID
+
+I (13065) wolfssl: Getting Cert Name
+
+I (13069) wolfssl: Getting Cert Name
+
+I (13074) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_new
+
+I (13079) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_add_entry_by_NID
+
+I (13087) wolfssl: Found place for name entry
+
+I (13092) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_ENTRY_free
+
+I (13098) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_add_entry_by_NID
+
+I (13105) wolfssl: Found place for name entry
+
+I (13111) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_ENTRY_free
+
+I (13117) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_add_entry_by_NID
+
+I (13124) wolfssl: Found place for name entry
+
+I (13129) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_ENTRY_free
+
+I (13136) wolfssl: Getting Cert Name
+
+I (13140) wolfssl: Getting Cert Name
+
+I (13145) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_new
+
+I (13151) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_add_entry_by_NID
+
+I (13158) wolfssl: Found place for name entry
+
+I (13163) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_ENTRY_free
+
+I (13170) wolfssl: Got Subject Name
+
+I (13174) wolfssl: wolfSSL Entering GetAlgoId
+
+I (13179) wolfssl: wolfSSL Entering GetObjectId()
+
+I (13184) wolfssl: wolfSSL Entering GetObjectId()
+
+I (13190) wolfssl: Got Key
+
+I (13193) wolfssl: Parsed Past Key
+
+I (13197) wolfssl: wolfSSL Entering DecodeCertExtensions
+
+I (13203) wolfssl: wolfSSL Entering GetObjectId()
+
+I (13208) wolfssl: wolfSSL Entering DecodeKeyUsage
+
+I (13214) wolfssl: wolfSSL Entering GetObjectId()
+
+I (13219) wolfssl: DecodeExtKeyUsage
+
+I (13224) wolfssl: wolfSSL Entering GetObjectId()
+
+I (13229) wolfssl: wolfSSL Entering GetObjectId()
+
+I (13234) wolfssl: wolfSSL Entering DecodeBasicCaConstraint
+
+I (13241) wolfssl: wolfSSL Entering GetObjectId()
+
+I (13246) wolfssl: wolfSSL Entering DecodeSubjKeyId
+
+I (13251) wolfssl: wolfSSL Entering GetObjectId()
+
+I (13257) wolfssl: wolfSSL Entering DecodeAuthKeyId
+
+I (13262) wolfssl: wolfSSL Entering GetObjectId()
+
+I (13268) wolfssl: wolfSSL Entering DecodeAuthInfo
+
+I (13273) wolfssl: wolfSSL Entering GetObjectId()
+
+I (13279) wolfssl: wolfSSL Entering GetObjectId()
+
+I (13284) wolfssl: wolfSSL Entering DecodeAltNames
+
+I (13290) wolfssl: wolfSSL Entering GetObjectId()
+
+I (13295) wolfssl: Certificate Policy extension not supported yet.
+
+I (13302) wolfssl: wolfSSL Entering GetObjectId()
+
+I (13307) wolfssl: wolfSSL Entering DecodeCrlDist
+
+I (13312) wolfssl: wolfSSL Entering GetObjectId()
+
+I (13318) wolfssl: wolfSSL Entering GetAlgoId
+
+I (13323) wolfssl: wolfSSL Entering GetObjectId()
+
+I (13328) wolfssl: CA found
+
+I (13332) wolfssl: Verified Peer's cert
+
+I (13336) wolfssl: wolfSSL Entering X509_set_issuer_name
+
+I (13342) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_copy
+
+I (13349) wolfssl: wolfSSL Entering X509_set_subject_name
+
+I (13354) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_copy
+
+I (13361) wolfssl: Checking AltNames
+
+I (13365) wolfssl:      individual AltName check
+
+I (13370) wolfssl:      individual AltName check
+
+I (13375) wolfssl:      wildcard match failed
+
+I (13379) wolfssl:      individual AltName check
+
+I (13384) wolfssl:      wildcard match failed
+
+I (13389) wolfssl:      individual AltName check
+
+I (13394) wolfssl:      wildcard match failed
+
+I (13399) wolfssl:      individual AltName check
+
+I (13404) wolfssl:      wildcard match failed
+
+I (13408) wolfssl:      individual AltName check
+
+I (13413) wolfssl:      match found
+
+I (13417) wolfssl: wolfSSL Entering GetObjectId()
+
+I (13423) wolfssl: wolfSSL Leaving ProcessPeerCerts, return 0
+
+I (13429) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_free
+
+I (13435) wolfssl: wolfSSL Entering wolfSSL_X509_NAME_free
+
+I (13441) wolfssl: wolfSSL Leaving DoTls13Certificate, return 0
+
+I (13460) wolfssl: wolfSSL Leaving DoTls13HandShakeMsgType(), return 0
+
+I (13461) wolfssl: wolfSSL Leaving DoTls13HandShakeMsg(), return 0
+
+I (13463) wolfssl: More messages in record
+
+I (13468) wolfssl: Bundled encrypted messages, remove middle pad
+
+I (13475) wolfssl: received record layer msg
+
+I (13480) wolfssl: got HANDSHAKE
+
+I (13484) wolfssl: wolfSSL Entering wolfSSL_get_options
+
+I (13490) wolfssl: wolfSSL Entering DoTls13HandShakeMsg()
+
+I (13496) wolfssl: wolfSSL Entering DoTls13HandShakeMsgType
+
+I (13502) wolfssl: processing certificate verify
+
+I (13507) wolfssl: wolfSSL Entering DoTls13CertificateVerify
+
+I (13514) wolfssl: Doing ECC peer cert verify
+
+I (13519) wolfssl: wolfSSL Entering EccVerify
+
+I (13527) wolfssl: wolfSSL Leaving EccVerify, return -330
+
+I (13530) wolfssl: wolfSSL Leaving DoTls13CertificateVerify, return -330
+
+I (13537) wolfssl: wolfSSL Entering SendAlert
+
+I (13542) wolfssl: growing output buffer
+
+
+
+I (13547) wolfssl: wolfSSL Entering BuildMessage
+
+I (13552) wolfssl: wolfSSL Entering BuildTls13Message
+
+I (13558) wolfssl: wolfSSL Entering EncryptTls13
+
+I (13564) wolfssl: wolfSSL Leaving BuildTls13Message, return 0
+
+I (13572) wolfssl: Shrinking output buffer
+
+
+
+I (13575) wolfssl: wolfSSL Leaving SendAlert, return 0
+
+I (13581) wolfssl: wolfSSL Leaving DoTls13HandShakeMsgType(), return -330
+
+I (13588) wolfssl: wolfSSL Leaving DoTls13HandShakeMsg(), return -330
+
+I (13595) wolfssl: wolfSSL error occurred, error = 330 line:17333 file:D:/Espressif/esp-wolfssl/wo
+
+I (13605) wolfssl: wolfSSL error occurred, error = 330 line:8495 file:D:/Espressif/esp-wolfssl/wol
+
+E (13614) message.c: Error connect -1
+
+I (13619) wolfssl: wolfSSL Entering SSL_free
+
+I (13624) wolfssl: CTX ref count not 0 yet, no free
+
+I (13630) wolfssl: Shrinking input buffer
+
+
+
+I (13635) wolfssl: wolfSSL Entering wolfSSL_sk_X509_NAME_pop_free
+
+I (13641) wolfssl: wolfSSL Entering wolfSSL_sk_pop_free
+
+I (13647) wolfssl: Error, BAD_FUNC_ARG
+
+I (13651) wolfssl: wolfSSL Leaving SSL_free, return 0
+
+I (13657) wolfssl: wolfSSL Entering SSL_CTX_free
+
+I (13662) wolfssl: CTX ref count down to 0, doing full free
+
+I (13669) wolfssl: wolfSSL Entering wolfSSL_CertManagerFree
+
+I (13675) wolfssl: wolfSSL Entering wolfSSL_sk_X509_NAME_pop_free
+
+I (13682) wolfssl: wolfSSL Entering wolfSSL_sk_pop_free
+
+I (13687) wolfssl: Error, BAD_FUNC_ARG
+
+I (13692) wolfssl: wolfSSL Leaving SSL_CTX_free, return 0
+
+I (13698) wolfssl: wolfSSL Entering wolfSSL_Cleanup
+
+I (13704) wolfssl: wolfSSL Entering wolfCrypt_Cleanup
+
+I (68346) vTimerCallback0: Timer expired

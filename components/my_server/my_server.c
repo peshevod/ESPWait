@@ -608,6 +608,64 @@ static esp_err_t devices_get_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
+static esp_err_t monitor_post_handler(httpd_req_t *req)
+{
+    char user[CRYPTO_USERNAME_MAX+1];
+    char role[CRYPTO_ROLE_MAX+1];
+    char join[2048];
+    esp_err_t err=ESP_OK;
+    uint8_t chunk;
+    char uname[CRYPTO_USERNAME_MAX+7];
+
+    ESP_LOGI(TAG,"POST monitor/* handler");
+	print_headers(req);
+    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin" , "*");
+    if(!verifyBearer(req,user,role))
+    {
+    	httpd_resp_send_err(req,HTTPD_401_UNAUTHORIZED,"Unauthorized");
+    	return ESP_FAIL;
+    }
+
+    size_t url_len=httpd_req_get_url_query_len(req);
+    char* url_string=malloc(url_len+1);
+    if((err=httpd_req_get_url_query_str(req, url_string, url_len))!=ESP_OK)
+    {
+    	ESP_LOGE(TAG,"Error get url req %s",esp_err_to_name(err));
+    	free(url_string);
+    	httpd_resp_send_err(req,500,"Bad URL string");
+    	return ESP_FAIL;
+    }
+    url_string[url_len]=0;
+    char* monitor=strstr(url_string,"/monitor/");
+    char* sw=NULL;
+    if((sw=strchr(&monitor[9],'/'))!=NULL) *sw=0;
+    if((sw=strchr(&monitor[9],':'))!=NULL) *sw=0;
+    sw=&monitor[9];
+    if(!strcmp(sw,"token"))
+    {
+    	char* token=malloc(req->content_len+1);
+    	if((err=httpd_req_recv(req, token, req->content_len))!=ESP_OK)
+    	{
+			ESP_LOGE(TAG,"Error get content %s",esp_err_to_name(err));
+			free(url_string);
+			httpd_resp_send_err(req,500,"Bad Content string");
+			return ESP_FAIL;
+    	}
+    	token[req->content_len]=0;
+    	strcpy(uname,user);
+    	strcat(uname,"_token");
+    	Write_str_params(uname,token);
+    	Commit_params();
+    	free(token);
+     }
+    free(url_string);
+    httpd_resp_send(req, NULL,0);
+    return ESP_OK;
+}
+
+
+
+
 static esp_err_t monitor_get_handler(httpd_req_t *req)
 {
     char user[CRYPTO_USERNAME_MAX+1];
@@ -1101,6 +1159,13 @@ static httpd_uri_t monitor_get_uri = {
     .user_ctx = &rest_context
 };
 
+static httpd_uri_t monitor_post_uri = {
+    .uri = "/monitor/*",
+    .method = HTTP_POST,
+    .handler = monitor_post_handler,
+    .user_ctx = &rest_context
+};
+
 
 httpd_handle_t start_my_server(void)
 {
@@ -1149,6 +1214,7 @@ httpd_handle_t start_my_server(void)
 		httpd_register_uri_handler(my_server, &devices2);
 		httpd_register_uri_handler(my_server, &systemx);
 		httpd_register_uri_handler(my_server, &monitor_get_uri);
+		httpd_register_uri_handler(my_server, &monitor_post_uri);
 		httpd_register_uri_handler(my_server, &common_get_uri);
     }
     else
