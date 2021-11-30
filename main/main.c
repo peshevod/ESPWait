@@ -19,7 +19,7 @@
 //#include "esp_event_loop.h"
 #include "esp_int_wdt.h"
 #include "esp_task_wdt.h"
-#include "esp_bt.h"
+//#include "esp_bt.h"
 //#include "esp_bt_main.h"
 #include "nvs.h"
 #include "nvs_flash.h"
@@ -38,14 +38,14 @@
 //#include "aws_iot_version.h"
 //#include "aws_iot_mqtt_client_interface.h"
 //#include "aws_iot_shadow_interface.h"
-#include "spp_server.h"
+//#include "spp_server.h"
 #include "esp_sntp.h"
 #include "lorawan_types.h"
 #include "eui.h"
 #include "MainLoop.h"
 #include "CppTest.h"
 #include "my_server.h"
-#include "mdns.h"
+//#include "mdns.h"
 #include "lwip/apps/netbiosns.h"
 #include "system_test.h"
 #include "crypto.h"
@@ -711,10 +711,11 @@ static esp_err_t set_global_sec()
 static void system_init()
 {
 	esp_err_t err;
-    httpd_handle_t my_server_handle;
+    httpd_handle_t my_server_handle=NULL;
     vTaskDelay(1000 / portTICK_PERIOD_MS);
     periph_module_reset(PERIPH_UART2_MODULE);
 	init_uart0();
+    ESP_LOGI(TAG,"After init_uart FREE=%d",xPortGetFreeHeapSize());
     vTaskDelay(100 / portTICK_PERIOD_MS);
 	ESP_LOGI(TAG, "System init");
 	uint32_t* z=RTC_CNTL_SDIO_CONF_REG;
@@ -729,9 +730,13 @@ static void system_init()
 //    erase_EEPROM_Data();
     Sync_EEPROM();
 //    uint8_t x=selectJoinServer((void*)&JoinServer);
+    ESP_LOGI(TAG,"After Sync EEPROM FREE=%d",xPortGetFreeHeapSize());
     fill_devices1();
+    ESP_LOGI(TAG,"After fill devices FREE=%d",xPortGetFreeHeapSize());
     get_SHAKey();
+    ESP_LOGI(TAG,"After get SHAKey FREE=%d",xPortGetFreeHeapSize());
     messagingInit();
+    ESP_LOGI(TAG,"After messagingInit FREE=%d",xPortGetFreeHeapSize());
 //    getAuthToken();
 //    print_SHAKey(shaKey);
     while(!init_sdmmc())
@@ -739,6 +744,7 @@ static void system_init()
     	ESP_LOGI(TAG,"SD card is not initialized! Is it in slot?");
         vTaskDelay(30000 / portTICK_PERIOD_MS);
     }
+    ESP_LOGI(TAG,"After init sdmmc FREE=%d",xPortGetFreeHeapSize());
     test_sdmmc();
    	test_spi();
    	ready_to_send=0;
@@ -748,17 +754,22 @@ static void system_init()
 		ESP_LOGE(TAG,"Error while connecting to network");
 		return;
 	}
+    ESP_LOGI(TAG,"After wifi FREE=%d",xPortGetFreeHeapSize());
     set_global_sec();
 //   	char user[CRYPTO_USERNAME_MAX+1];
 //   	char role[CRYPTO_ROLE_MAX+1];
 //    makeToken(token, sizeof(token), "ilya", 3600, "user");
 //   	if(verifyToken(token,user,role)==ESP_OK) ESP_LOGI(TAG,"Token verified user=%s role=%s",user,role);
+    ESP_LOGI(TAG,"before start server FREE=%d",xPortGetFreeHeapSize());
     my_server_handle = start_my_server();
+    ESP_LOGI(TAG,"after start server FREE=%d",xPortGetFreeHeapSize());
     if (my_server_handle ==NULL)  {
         ESP_LOGI(TAG, "failed to start https server");
     }
 
-    getAuthToken();
+    Write_str_params("ilya_token", "eJ_HGSwFSRKTa2JXtWrzcv:APA91bG6lfzl37qBt1XooXucfLLGBKSatwQMqpdJMlxIFzyo_7f-LIqWAzfIWQ_R39-Dvs95rv2AnHiWUEGgPfcUsll5czM90ndTtMf_1IFqdG9UTDVcTPYwbehTduvNI7_IqzUrUkdQ");
+    Commit_params();
+    sendMessage("ilya","New Message from ESPWait","Test message");
     CppTest* cpptest=CppTest_new();
 
 }
@@ -766,6 +777,7 @@ static void system_init()
 
 void app_main(void)
 {
+    ESP_LOGI(TAG,"start FREE=%d",xPortGetFreeHeapSize());
 	system_init();
 	uint64_t sleep_time=300000000;
 	trans_sleep=300000000;

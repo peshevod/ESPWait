@@ -13,21 +13,21 @@
 #include <sys/fcntl.h>
 #include "esp_system.h"
 #include "esp_log.h"
-#include "esp_console.h"
-#include "esp_vfs_dev.h"
+//#include "esp_console.h"
+//#include "esp_vfs_dev.h"
 #include "driver/uart.h"
-#include "linenoise/linenoise.h"
-#include "esp_vfs_fat.h"
+//#include "linenoise/linenoise.h"
+//#include "esp_vfs_fat.h"
 #include "freertos/timers.h"
 #include "nvs.h"
 #include "nvs_flash.h"
 #include "cmd_nvs.h"
 #include "s2lp_console.h"
 #include "shell.h"
-#include "spp_server.h"
+//#include "spp_server.h"
 
 extern uint8_t s2lp_console_ex;
-extern int volatile console_fd;
+int volatile console_fd=-1;
 char x[128];
 extern char server_name[40];
 extern uint8_t stop_console[2];
@@ -35,7 +35,7 @@ extern RTC_SLOW_ATTR uint32_t uid;
 
 int volatile s2lp_console_timer_expired;
 
-void bt_console()
+/*void bt_console()
 {
     sprintf(server_name, "ESPWAIT-%08X", uid);
     init_spp_server();
@@ -54,7 +54,7 @@ void bt_console()
     ESP_LOGI("bt_console","BT_CONSOLE stopped\n");
     stop_console[BT_CONSOLE]=2;
 	vTaskDelete(NULL);
-}
+}*/
 
 void serial_console()
 {

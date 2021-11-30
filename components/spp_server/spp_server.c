@@ -28,11 +28,11 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
-#include "esp_bt.h"
-#include "esp_bt_main.h"
-#include "esp_gap_bt_api.h"
-#include "esp_bt_device.h"
-#include "esp_spp_api.h"
+//#include "esp_bt.h"
+//#include "esp_bt_main.h"
+//#include "esp_gap_bt_api.h"
+//#include "esp_bt_device.h"
+//#include "esp_spp_api.h"
 #include "spp_task.h"
 
 #include "time.h"
@@ -52,7 +52,7 @@ static const esp_spp_role_t role_slave = ESP_SPP_ROLE_SLAVE;
 
 #define SPP_DATA_LEN 100
 static uint8_t spp_data[SPP_DATA_LEN];
-int volatile console_fd=-1;
+extern int volatile console_fd;
 char server_name[40];
 
 static void spp_read_handle(void * param)

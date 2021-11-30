@@ -9,7 +9,7 @@
 #register_component()
 idf_component_register(SRCS main.c
                     INCLUDE_DIRS "."
-                    REQUIRES s2lp_console cmd_nvs radio nvs_partition spp_server nvs_flash lorawan aes cpptest my_server mdns system_test crypto request message)
+                    REQUIRES s2lp_console cmd_nvs radio nvs_partition nvs_flash lorawan aes cpptest my_server system_test crypto request message)
                                         
 #target_add_binary_data(${COMPONENT_TARGET} "certs/aws-root-ca.pem" TEXT)
 #target_add_binary_data(${COMPONENT_TARGET} "certs/certificate.pem.crt" TEXT)

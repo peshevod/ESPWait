@@ -5,10 +5,13 @@
 extern "C" {
 #endif
 
+#define MAX_CONTENT_LENGTH	2048
+
+
 void messagingInit(void);
 char* createContent(int* content_len);
-char* getAuthToken(void);
-
+int getAccessToken(char* buf, int max_len);
+void sendMessage(char* user0, char* messageTitle0, char* messageBody0);
 
 #ifdef __cplusplus
 }
