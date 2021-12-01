@@ -769,7 +769,10 @@ static void system_init()
 
     Write_str_params("ilya_token", "eJ_HGSwFSRKTa2JXtWrzcv:APA91bG6lfzl37qBt1XooXucfLLGBKSatwQMqpdJMlxIFzyo_7f-LIqWAzfIWQ_R39-Dvs95rv2AnHiWUEGgPfcUsll5czM90ndTtMf_1IFqdG9UTDVcTPYwbehTduvNI7_IqzUrUkdQ");
     Commit_params();
-    sendMessage("ilya","New Message from ESPWait","Test message");
+    char xxx[64];
+    uint32_t now=(uint32_t)time(NULL);
+    sprintf(xxx,"Message sent at %d",now);
+    sendMessage("ilya","New Message from ESPWait",xxx);
     CppTest* cpptest=CppTest_new();
 
 }
