@@ -7,11 +7,10 @@
 
 
 
-#ifndef COMPONENTS_LORAWAN_EUI_H_
-#define COMPONENTS_LORAWAN_EUI_H_
+#ifndef COMPONENTS_LORAWAN_DEVICE_H_
+#define COMPONENTS_LORAWAN_DEVICE_H_
 
-#define	TYPE_DEVEUI		0
-#define	TYPE_JOINEUI	1
+#define MAX_NUMBER_OF_DEVICES					32
 
 typedef union
 {
@@ -33,4 +32,4 @@ uint8_t euicmpr(GenericEui_t* eui1, GenericEui_t* eui2);
 
 
 
-#endif /* COMPONENTS_LORAWAN_EUI_H_ */
+#endif /* COMPONENTS_LORAWAN_DEVICE_H_ */

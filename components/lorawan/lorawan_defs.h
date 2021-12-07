@@ -50,7 +50,6 @@ extern "C" {
 #define LAST_NIBBLE                             0x0F
 #define FIRST_NIBBLE                            0xF0
 
-#define MAX_NUMBER_OF_DEVICES					32
 
 #define SIZE_JOIN_ACCEPT_WITH_CFLIST                33
 #define NUMBER_CFLIST_FREQUENCIES                   5

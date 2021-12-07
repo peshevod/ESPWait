@@ -15,12 +15,12 @@ extern "C" {
 // if(a<0x80){a<<=1;}else{a=(a<<1)^0x1b;}
 
 
-void AESEncodeLoRa(unsigned char* block, unsigned char* key);
-void AESDecodeLoRa(unsigned char* block, unsigned char* key);
-void AESEncode(uint8_t* block, uint8_t* useKey);
-void AESDecode(uint8_t* block, uint8_t* useKey);
+void AESEncodeLoRa(unsigned char* block, const unsigned char* key);
+void AESDecodeLoRa(unsigned char* block, const unsigned char* key);
+void AESEncode(uint8_t* block, const uint8_t* useKey);
+void AESDecode(uint8_t* block, const uint8_t* useKey);
 void AESCalcDecodeKey(unsigned char* key);
-void AESCmac(uint8_t* key, uint8_t* output, uint8_t* input, uint8_t size);
+void AESCmac(const uint8_t* key, uint8_t* output, const uint8_t* input, const uint8_t size);
 
 #ifdef __cplusplus
 }

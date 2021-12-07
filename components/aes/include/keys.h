@@ -22,9 +22,9 @@ typedef enum
 	KEY_JSIntKey 	=	0x06
 } Key_t;
 
-void computeJSKey(Key_t keytype, uint8_t* NwkKey, GenericEui_t devEui, uint8_t* JSKey);
-void computeKey11(Key_t keytype, uint8_t* Key, uint32_t joinNonce, GenericEui_t joinEui, uint16_t devNonce, uint8_t* outKey);
-void computeKey10(Key_t keytype, uint8_t* Key, uint32_t joinNonce, uint32_t netID, uint16_t devNonce, uint8_t* outKey);
+void computeJSKey(const Key_t keytype, const uint8_t* NwkKey, const GenericEui_t devEui, uint8_t* JSKey);
+void computeKey11(const Key_t keytype, const uint8_t* Key, const uint32_t joinNonce, const GenericEui_t joinEui, const uint16_t devNonce, uint8_t* outKey);
+void computeKey10(const Key_t keytype, const uint8_t* Key, const uint32_t joinNonce, const uint32_t netID, const uint16_t devNonce, uint8_t* outKey);
 void computeKeys(NetworkSession_t* ns);
 
 

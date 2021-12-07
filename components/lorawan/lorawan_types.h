@@ -14,7 +14,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <string.h>
-#include "eui.h"
+#include "device.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/timers.h"
 #include "freertos/task.h"
@@ -571,10 +571,10 @@ typedef struct
 	ActivationParameters_t defaultActivationParameters;
 } NetworkServer_t;
 
-typedef struct
-{
-	GenericEui_t joinEui;
-} JoinServer_t;
+//typedef struct
+//{
+//	GenericEui_t joinEui;
+//} JoinServer_t;
 
 typedef struct
 {
@@ -586,7 +586,7 @@ typedef struct
 typedef struct
 {
 	EndDevice_t* endDevice;
-	JoinServer_t* joinServer;
+	GenericEui_t joinEui;
 	NetworkServer_t* networkServer;
 	uint32_t joinNonce;
 	uint8_t FNwkSIntKey[16];

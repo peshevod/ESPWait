@@ -14,7 +14,7 @@ extern "C" {
 #endif
 
 #include "esp_err.h"
-#include "eui.h"
+#include "../lorawan/device.h"
 
 #define VISIBLE 1
 #define HIDDEN  0
@@ -97,23 +97,23 @@ esp_err_t Read_key_params(const char* key, uint8_t* appkey);
 esp_err_t Read_eui_params(const char* key, uint8_t* eui);
 esp_err_t Read_str_params(const char* key, char* str, uint8_t max_len);
 esp_err_t Commit_params(void);
-esp_err_t get_Eui(uint8_t n, GenericEui_t* deveui);
-esp_err_t put_Eui(uint8_t n, GenericEui_t* deveui);
-uint8_t get_EUI_type(uint8_t n);
-void set_EUI_type(uint8_t n);
-void clear_EUI_type(uint8_t n);
+//esp_err_t get_Eui(uint8_t n, GenericEui_t* deveui);
+//esp_err_t put_Eui(uint8_t n, GenericEui_t* deveui);
+//uint8_t get_EUI_type(uint8_t n);
+//void set_EUI_type(uint8_t n);
+//void clear_EUI_type(uint8_t n);
 uint16_t get_DevNonce(uint8_t n);
 void put_DevNonce(uint8_t n, uint16_t DevNonce);
-uint8_t get_eui_numbers(void);
-uint8_t increase_eui_numbers(void);
-esp_err_t erase_EEPROM_Data(void);
-esp_err_t Commit_deveui(void);
+//uint8_t get_eui_numbers(void);
+//uint8_t increase_eui_numbers(void);
+//esp_err_t erase_EEPROM_Data(void);
+//esp_err_t Commit_deveui(void);
 uint32_t getinc_JoinNonce(void);
 void put_JoinNonce(uint32_t joinNonce);
-uint8_t get_Version(uint8_t n);
-void put_Version(uint8_t n, uint8_t version);
-esp_err_t put_Keys(uint8_t n, uint8_t* NwkKey, uint8_t* AppKey);
-esp_err_t get_Keys(uint8_t n, uint8_t* NwkKey, uint8_t* AppKey);
+//uint8_t get_Version(uint8_t n);
+//void put_Version(uint8_t n, uint8_t version);
+//esp_err_t put_Keys(uint8_t n, uint8_t* NwkKey, uint8_t* AppKey);
+//esp_err_t get_Keys(uint8_t n, uint8_t* NwkKey, uint8_t* AppKey);
 esp_err_t get_SHAKey(void);
 void print_SHAKey(void);
 void deleteAccount(uint8_t j0);

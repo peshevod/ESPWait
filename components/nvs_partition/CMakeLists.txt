@@ -1,4 +1,4 @@
-idf_component_register(REQUIRES nvs_flash)
+idf_component_register(REQUIRES nvs_flash cmd_nvs)
 
 add_custom_command(OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/sx1276_params.bin
 				   COMMAND ${PYTHON} ${IDF_PATH}/components/nvs_flash/nvs_partition_generator/nvs_partition_gen.py generate ${CMAKE_CURRENT_SOURCE_DIR}/SX1276_params.csv ${CMAKE_CURRENT_SOURCE_DIR}/sx1276_params.bin 0x8000

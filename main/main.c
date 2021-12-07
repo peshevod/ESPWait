@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <device.h>
 #include <inttypes.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -41,7 +42,6 @@
 //#include "spp_server.h"
 #include "esp_sntp.h"
 #include "lorawan_types.h"
-#include "eui.h"
 #include "MainLoop.h"
 #include "CppTest.h"
 #include "my_server.h"
@@ -54,6 +54,7 @@
 #include "soc/efuse_reg.h"
 #include "soc/apb_ctrl_reg.h"
 #include "message.h"
+#include "esp_smartconfig.h"
 #define LOG_LOCAL_LEVEL ESP_LOG_VERBOSE
 #include "esp_log.h"
 //#include "spi_intf.h"
@@ -118,7 +119,8 @@ static EventGroupHandle_t s_wifi_event_group;
 
 /* The event group allows multiple bits for each event, but we only care about one event
  * - are we connected to the AP with an IP? */
-const int WIFI_CONNECTED_BIT = BIT0;
+static const int WIFI_CONNECTED_BIT = BIT0;
+static const int ESPTOUCH_DONE_BIT = BIT1;
 
 esp_netif_t* wifi_interface;
 /*AWS_IoT_Client client;
@@ -197,8 +199,46 @@ static void event_handler(void* arg, esp_event_base_t event_base,
     } else if (event_base == WIFI_EVENT && event_id==WIFI_EVENT_STA_STOP){
 		ESP_LOGI("wifi handler","wifi stopped");
     	wifi_stopped=1;
-    }
+    } else if (event_base == SC_EVENT && event_id == SC_EVENT_SCAN_DONE) {
+        ESP_LOGI("wifi handler", "Scan done");
+    } else if (event_base == SC_EVENT && event_id == SC_EVENT_FOUND_CHANNEL) {
+        ESP_LOGI("wifi handler", "Found channel");
+    } else if (event_base == SC_EVENT && event_id == SC_EVENT_GOT_SSID_PSWD) {
+        ESP_LOGI("wifi handler", "Got SSID and password");
 
+        smartconfig_event_got_ssid_pswd_t *evt = (smartconfig_event_got_ssid_pswd_t *)event_data;
+        wifi_config_t wifi_config;
+        uint8_t ssid[33] = { 0 };
+        uint8_t password[65] = { 0 };
+        uint8_t rvd_data[33] = { 0 };
+
+        bzero(&wifi_config, sizeof(wifi_config_t));
+        memcpy(wifi_config.sta.ssid, evt->ssid, sizeof(wifi_config.sta.ssid));
+        memcpy(wifi_config.sta.password, evt->password, sizeof(wifi_config.sta.password));
+        wifi_config.sta.bssid_set = evt->bssid_set;
+        if (wifi_config.sta.bssid_set == true) {
+            memcpy(wifi_config.sta.bssid, evt->bssid, sizeof(wifi_config.sta.bssid));
+        }
+
+        memcpy(ssid, evt->ssid, sizeof(evt->ssid));
+        memcpy(password, evt->password, sizeof(evt->password));
+        ESP_LOGI("wifi handler", "SSID:%s", ssid);
+        ESP_LOGI("wifi handler", "PASSWORD:%s", password);
+        if (evt->type == SC_TYPE_ESPTOUCH_V2) {
+            ESP_ERROR_CHECK( esp_smartconfig_get_rvd_data(rvd_data, sizeof(rvd_data)) );
+            ESP_LOGI("wifi handler", "RVD_DATA:");
+            for (int i=0; i<33; i++) {
+                printf("%02x ", rvd_data[i]);
+            }
+            printf("\n");
+        }
+
+        ESP_ERROR_CHECK( esp_wifi_disconnect() );
+        ESP_ERROR_CHECK( esp_wifi_set_config(WIFI_IF_STA, &wifi_config) );
+        esp_wifi_connect();
+    } else if (event_base == SC_EVENT && event_id == SC_EVENT_SEND_ACK_DONE) {
+        xEventGroupSetBits(s_wifi_event_group, ESPTOUCH_DONE_BIT);
+    }
 }
 
 static void wifi_handlers()
@@ -207,9 +247,28 @@ static void wifi_handlers()
     ESP_ERROR_CHECK(esp_event_loop_create_default());
     ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &event_handler, NULL));
+    ESP_ERROR_CHECK( esp_event_handler_register(SC_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL) );
 }
 
 
+static void sc_init()
+{
+    EventBits_t uxBits;
+    ESP_ERROR_CHECK( esp_smartconfig_set_type(SC_TYPE_ESPTOUCH) );
+    smartconfig_start_config_t cfg = SMARTCONFIG_START_CONFIG_DEFAULT();
+    ESP_ERROR_CHECK( esp_smartconfig_start(&cfg) );
+    while (1) {
+        uxBits = xEventGroupWaitBits(s_wifi_event_group, WIFI_CONNECTED_BIT | ESPTOUCH_DONE_BIT, true, false, portMAX_DELAY);
+        if(uxBits & WIFI_CONNECTED_BIT) {
+            ESP_LOGI(TAG, "WiFi Connected to ap");
+        }
+        if(uxBits & ESPTOUCH_DONE_BIT) {
+            ESP_LOGI(TAG, "smartconfig over");
+            esp_smartconfig_stop();
+            vTaskDelete(NULL);
+        }
+    }
+}
 static esp_err_t wifi_prepare()
 {
 	const uint16_t retries=1000;
@@ -229,9 +288,10 @@ static esp_err_t wifi_prepare()
 		ESP_ERROR_CHECK( esp_wifi_set_config(WIFI_IF_STA, &sta_config) );
 		con=1;
 		ESP_ERROR_CHECK( esp_wifi_start() );
+//		xTaskCreatePinnedToCore(sc_init,"SC_Task",2048,NULL,tskIDLE_PRIORITY+2,NULL,0);
 	}
 	else ESP_ERROR_CHECK( esp_wifi_connect() );
-    while(!ready_to_send && retry-->0) vTaskDelay(10/portTICK_PERIOD_MS);
+    while(!ready_to_send && retry-->0) vTaskDelay(100/portTICK_PERIOD_MS);
     if(ready_to_send)
     {
     	ESP_LOGI("wifi_prepare","Ready to send");

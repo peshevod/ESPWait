@@ -546,11 +546,13 @@ static esp_err_t accounts_get_handler(httpd_req_t *req)
 static esp_err_t devices_get_handler(httpd_req_t *req)
 {
     char user[CRYPTO_USERNAME_MAX+1];
+    char devUser[CRYPTO_USERNAME_MAX+1];
     char role[CRYPTO_ROLE_MAX+1];
     char join[2048];
     char parstr[128];
     char devName[PAR_STR_MAX_SIZE];
     uint8_t eui[8];
+    uint8_t users[8];
     uint8_t AppKey[16];
     uint8_t NwkKey[16];
     uint8_t version;
@@ -579,6 +581,8 @@ static esp_err_t devices_get_handler(httpd_req_t *req)
 		if(Read_str_params(uname,devName, PAR_STR_MAX_SIZE)!=ESP_OK) devName[0]=0;
 		sprintf(uname,"Dev%dVersion",j);
 		if(Read_u8_params(uname,&version)!=ESP_OK) version=0;
+		sprintf(uname,"Dev%dUsers",j);
+		if(Read_eui_params(uname,users)!=ESP_OK) continue;
 		sprintf(parstr,"{\"DevName\":\"%s\",\"DevEUI\":\"",devName);
 		strcat(join,parstr);
 		l=strlen(join);
@@ -596,8 +600,26 @@ static esp_err_t devices_get_handler(httpd_req_t *req)
 			l=strlen(join);
 			for(uint8_t i=0;i<16;i++,l+=2) sprintf(&join[l],"%02X",NwkKey[i]);
 			join[l]=0;
+			strcat(join,"\",\"Users\":[");
+			parstr[0]=0;
+			for(uint8_t k=0;k<8;k++)
+			{
+				if(users[k])
+				{
+					sprintf(uname,"USR%d",users[k]);
+					if(Read_str_params(uname,devUser, PAR_STR_MAX_SIZE)==ESP_OK)
+					{
+						if(parstr[0]) strcat(parstr,",");
+						strcat(parstr,"\"");
+						strcat(parstr,devUser);
+						strcat(parstr,"\"");
+					}
+				}
+			}
+			strcat(parstr,"]");
+			strcat(join,parstr);
 		}
-		sprintf(parstr,"\",\"Version\":\"%d\"},",version);
+		sprintf(parstr,",\"Version\":\"%d\"},",version);
 		strcat(join,parstr);
     }
     l=strlen(join);
@@ -943,9 +965,13 @@ static esp_err_t devices_post_handler(httpd_req_t *req)
     char uname[16];
     esp_err_t err0;
     cJSON *par;
+    cJSON *item;
     uint8_t j0;
     uint8_t jfree;
     uint8_t version;
+    char devUser[CRYPTO_USERNAME_MAX+1];
+    uint8_t users[8];
+
 
 
 
@@ -1033,6 +1059,25 @@ static esp_err_t devices_post_handler(httpd_req_t *req)
 								sscanf(par->valuestring,"%hhd",&version);
 								sprintf(uname,"Dev%dVersion",j0);
 								Write_u8_params(uname,version);
+							}
+							par = cJSON_GetObjectItemCaseSensitive(json_content,"Users");
+							if(par!=NULL && cJSON_IsArray(par))
+							{
+								bzero(users,8);
+								uint8_t k1=0;
+								cJSON_ArrayForEach(item,par)
+								{
+									if(item!=NULL && cJSON_IsString(item) && item->valuestring!=NULL)
+									{
+										for(uint8_t k=1;k<MAX_USERS;k++)
+										{
+											sprintf(uname,"USR%d",k);
+					   						if( (err0=Read_str_params(uname,devUser, CRYPTO_USERNAME_MAX))==ESP_OK && !strcmp(item->valuestring,devUser) && k1<8 ) users[k1++]=k;
+										}
+									}
+								}
+								sprintf(uname,"Dev%dUsers",j0);
+								Write_eui_params(uname,users);
 							}
 							Commit_params();
 						}

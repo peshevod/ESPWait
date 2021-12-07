@@ -19,3 +19,5 @@ After #if defined(WOLFSSL_ESPIDF) comment out #define NO_WOLFSSL_DIR
    Correct:
 	 wolfTLSv1_2_server_method() -> wolfTLSv1_3_server_method()
 	 wolfTLSv1_2_client_method() -> wolfTLSv1_3_client_method()
+7. Component my_server: in CMakeLists.txt change INCLUDE_DIRS to correct paths
+8. build\CMakeFiles\3.16.4\CMakeSystem.cmake: include(.../tools/cmake/toolchain-esp32.cmake) change to correct esp-idf directory. 

@@ -579,11 +579,11 @@ uint8_t set_raw_par(const char* par, const void* par_value)
     {
         if(parcmp(__pars->c,par,0))
         {
-            if(!strcmp(__pars->c,"Erase_EEPROM"))
+/*            if(!strcmp(__pars->c,"Erase_EEPROM"))
             {
                 if(erase_EEPROM_Data()!=ESP_OK) return 1;
                 return 0;
-            }
+            }*/
             if(__pars->type==PAR_UI32)
             {
                 if((err=Write_u32_params(__pars->c, *((uint32_t*)par_value)))!=ESP_OK) return err;
@@ -631,11 +631,11 @@ uint8_t set_par(console_type con, const char* par, const char* val_buf)
     {
         if(parcmp(__pars->c,par,0))
         {
-            if(!strcmp(__pars->c,"Erase_EEPROM"))
+/*            if(!strcmp(__pars->c,"Erase_EEPROM"))
             {
                 if(erase_EEPROM_Data()!=ESP_OK) return 1;
                 return 0;
-            }
+            }*/
             if(__pars->type==PAR_UI32)
             {
                 if (stringToUInt32(val_buf, &tmp32)) return 1;

@@ -25,9 +25,9 @@
 
 
 NetworkServer_t networkServer;
-JoinServer_t joinServer;
+//JoinServer_t joinServer;
 uint8_t number_of_devices;
-EndDevice_t* endDevices[MAX_NUMBER_OF_DEVICES];
+extern EndDevice_t* endDevices[MAX_NUMBER_OF_DEVICES];
 NetworkSession_t *networkSessions[MAX_NUMBER_OF_DEVICES];
 //uint8_t number_of_networkSessions;
 uint32_t NetID,NwkID,NwkID_mask;
@@ -45,6 +45,7 @@ uint8_t blockBuffer[MAXIMUM_BUFFER_LENGTH];
 uint8_t radioBuffer[RADIO_BUFFER_MAX];
 static Data_t data;
 extern TimerHandle_t startTimerId;
+extern GenericEui_t joinEui;
 
 
 // Spreading factor possibilities
@@ -69,8 +70,8 @@ void InitializeLorawan(void)
 	number_of_devices=0;
 	fill_devices1();
 	periph_module_enable(PERIPH_AES_MODULE);
-	set_s("JOINEUI",joinServer.joinEui.buffer);
-    ESP_LOGI(TAG,"joineui 0x%016llX",joinServer.joinEui.eui);
+	set_s("JOINEUI",joinEui.buffer);
+    ESP_LOGI(TAG,"joineui 0x%016llX",joinEui.eui);
 }
 
 
@@ -139,7 +140,7 @@ static uint32_t ComputeMic ( uint8_t *key, uint8_t* buffer, uint8_t bufferLength
 }
 
 
-LorawanError_t initNetworkSession(NetworkSession_t* networkSession , EndDevice_t* endDevice, NetworkServer_t* networkServer, JoinServer_t* joinServer)
+LorawanError_t initNetworkSession(NetworkSession_t* networkSession , EndDevice_t* endDevice, NetworkServer_t* networkServer, const GenericEui_t joinEui)
 {
     //protocol parameters receive the default values
     networkSession->protocolParameters.receiveDelay1 = RECEIVE_DELAY1;
@@ -153,7 +154,7 @@ LorawanError_t initNetworkSession(NetworkSession_t* networkSession , EndDevice_t
     networkSession->protocolParameters.maxMultiFcntGap = MAX_MCAST_FCNT_GAP;
 	networkSession->endDevice=endDevice;
 	networkSession->networkServer=networkServer;
-	networkSession->joinServer=joinServer;
+	networkSession->joinEui.eui=joinEui.eui;
     networkSession->joinNonce=getinc_JoinNonce();
     if(endDevice->version==1) networkSession->dlSettings.bits.version_1dot1=1;
     else networkSession->dlSettings.bits.version_1dot1=0;
@@ -344,7 +345,7 @@ uint8_t PrepareJoinAcceptFrame (NetworkSession_t* networkSession, uint8_t *macBu
     {
     	micBuffer=malloc(bufferIndex+16);
     	micBuffer[i++]=0xFF;
-    	for(uint8_t j=0;j<8;j++) micBuffer[i+j]=networkSession->joinServer->joinEui.buffer[7-j];
+    	for(uint8_t j=0;j<8;j++) micBuffer[i+j]=networkSession->joinEui.buffer[7-j];
     	i+=8;
     	memcpy(&micBuffer[i],&networkSession->endDevice->devNonce,sizeof(networkSession->endDevice->devNonce));
     	i+=2;
@@ -438,10 +439,10 @@ LorawanError_t LORAX_RxDone (uint8_t* buffer, uint8_t bufferLength, int16_t rssi
     {
 
         JoinRequest_t* joinRequest=(JoinRequest_t*)buffer;
-        ESP_LOGI(TAG,"Received Join EUI=%016llx My Join EUI=%016llx",*((uint64_t*)(&buffer[1])),joinServer.joinEui.eui);
-        if(euicmpr(&buffer[1],&joinServer.joinEui))
+        ESP_LOGI(TAG,"Received Join EUI=%016llx My Join EUI=%016llx",*((uint64_t*)(&buffer[1])),joinEui.eui);
+        if(euicmpr(&buffer[1],&joinEui))
         {
-            ESP_LOGE(TAG,"Received Join EUI=%016llx not equal my Join EUI=%016llx",joinRequest->joinEui.eui,joinServer.joinEui.eui);
+            ESP_LOGE(TAG,"Received Join EUI=%016llx not equal my Join EUI=%016llx",joinRequest->joinEui.eui,joinEui.eui);
             return INVALID_JOIN_EUI;
         }
         ESP_LOGI(TAG,"Received Device EUI=%016llx",joinRequest->devEui.eui);
@@ -491,7 +492,7 @@ LorawanError_t LORAX_RxDone (uint8_t* buffer, uint8_t bufferLength, int16_t rssi
         ESP_LOGI(TAG,"Create new network session %d",sessionNumber);
         networkSession=networkSessions[sessionNumber];
         networkSession->sessionNumber=sessionNumber;
-        initNetworkSession(networkSession , endDevice, &networkServer, &joinServer);
+        initNetworkSession(networkSession , endDevice, &networkServer, joinEui);
         networkSession->macState = BEFORE_TX1;
 
         networkSession->sendAnswerTimerId->event=SEND_JOIN_ACCEPT_1_TIMER;

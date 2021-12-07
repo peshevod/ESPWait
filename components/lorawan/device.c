@@ -18,11 +18,12 @@
 #include "shell.h"
 #include "esp_system.h"
 
-extern EndDevice_t* endDevices[MAX_NUMBER_OF_DEVICES];
-extern NetworkSession_t* networkSessions[MAX_NUMBER_OF_DEVICES];
-static char TAG[]={"eui.c"};
+EndDevice_t* endDevices[MAX_NUMBER_OF_DEVICES];
 uint8_t number_of_devices;
-GenericEui_t JoinEui;
+
+extern NetworkSession_t* networkSessions[MAX_NUMBER_OF_DEVICES];
+extern GenericEui_t joinEui;
+static char TAG[]={"device.c"};
 
 uint8_t euicmpnz(GenericEui_t* eui)
 {
@@ -42,7 +43,7 @@ uint8_t euicmpr(GenericEui_t* eui1, GenericEui_t* eui2)
     return 0;
 }
 
-uint8_t selectJoinServer(void* joinServer)
+/*uint8_t selectJoinServer(void* joinServer)
 {
     char joinName[9];
     uint8_t eui_numbers;
@@ -111,123 +112,8 @@ uint8_t selectJoinServer(void* joinServer)
     ((Profile_t*)joinServer)->js=js;
     ESP_LOGI("eui.c","Selected JoinServer js=%d Eui=%016llX",js,((Profile_t*)joinServer)->Eui.eui);
     return js;
-}
-
-
-/*static void writeDevPars(char* devName, uint8_t devNumber)
-{
-	char n='0';
-	const char devName0[]="DEV0EUI";
-	char nwkkeyName[]="DEV0NWKKEY";
-	char appkeyName[]="DEV0APPKEY";
-	char verName[]="DEV0VERSION";
-	char key[16];
-	char devnNamen[8];
-	if(strlen(devName)>7) return;
-	strcpy(devNamen,devName);
-	devNamen[3]='0';
-	if(strcmp(devName0,devNamen)) return;
-	n=devName[3];
-	if(n<0x30 || n>0x39) return;
-	nwkkeyName[3]=n;
-	appkeyName[3]=n;
-	verName[3]=n;
-	set_s(nwkkeyName,key);
 }*/
 
-
-/*uint8_t fill_devices(void)
-{
-    char devName[9];
-    char NwkKeyName[16];
-    char AppKeyName[16];
-    char versionName[16];
-    uint8_t NwkKey[16];
-    uint8_t AppKey[16];
-    uint8_t version;
-    uint8_t eui_numbers;
-    GenericEui_t devEui,dev_eeprom;
-    uint8_t js=0,found=0;
-ESP_LOGI(TAG,"before n_of_eui=%d",get_eui_numbers());
-	strcpy(devName,"DEV0EUI");
-	strcpy(NwkKeyName,"DEV0NWKKEY");
-	strcpy(AppKeyName,"DEV0APPKEY");
-	strcpy(versionName,"DEV0VERSION");
-    for(uint8_t j=1;j<=7;j++)
-    {
-        devName[3]=0x30 + j;
-        set_s(devName,&devEui);
-        ESP_LOGI(TAG,"j=%d Eui=0x%016llX",j,devEui.eui);
-        if(euicmpnz(&devEui))
-        {
-//            send_chars("not zero\r\n");
-            found=0;
-            eui_numbers=get_eui_numbers();
-            for(uint8_t k=0;k<eui_numbers;k++)
-            {
-                if((get_Eui(k,&(dev_eeprom)))==ESP_OK)
-                {
-                     if(!euicmp(&devEui,&(dev_eeprom)) && !get_EUI_type(k))
-                     {
-                         found=1;
-                         ESP_LOGI(TAG,"found j=%d Eui=0x%016llX k=%d",j,devEui.eui,k);
-                         NwkKeyName[3]=0x30+j;
-                         AppKeyName[3]=0x30+j;
-                         versionName[3]=0x30+j;
-                         set_s(NwkKeyName,NwkKey);
-                         set_s(AppKeyName,AppKey);
-                         set_s(versionName,&version);
-                         put_Keys(k,NwkKey,AppKey);
-                         put_Version(k,version);
-                         Commit_deveui();
-                         break;
-                     }
-                }
-                else return 0;
-            }
-            if(!found)
-            {
-                put_Eui(eui_numbers,&devEui);
-                put_DevNonce(eui_numbers,0);
-                clear_EUI_type(eui_numbers);
-                NwkKeyName[3]=0x30+j;
-                AppKeyName[3]=0x30+j;
-                versionName[3]=0x30+j;
-                set_s(NwkKeyName,NwkKey);
-                set_s(AppKeyName,AppKey);
-                set_s(versionName,&version);
-                put_Keys(eui_numbers,NwkKey,AppKey);
-                put_Version(eui_numbers,version);
-                eui_numbers=increase_eui_numbers();
-                Commit_deveui();
-                ESP_LOGI(TAG,"not found j=%d Eui=0x%016llX k=%d",j,devEui.eui,get_eui_numbers()-1);
-            }
-        }
-    }
-    js=0;
-//    printVar("after EEPROM_types=",PAR_UI32,&EEPROM_types,true,true);
-    for(uint8_t j=0;j<eui_numbers;j++)
-    {
-        if(get_Eui(j,&devEui)==ESP_OK && !get_EUI_type(j))
-        {
-            endDevices[js]=malloc(sizeof(EndDevice_t));
-        	endDevices[js]->number_in_deveui=j;
-        	endDevices[js]->devNonce=get_DevNonce(j);
-        	endDevices[js]->devEui.eui=devEui.eui;
-            get_Keys(endDevices[js]->number_in_deveui, endDevices[js]->NwkKey,endDevices[js]->AppKey);
-            endDevices[js]->version=get_Version(js);
-            ESP_LOGI(TAG,"Device number=%d DevNonce=0x%04X EUI=0x%016llX version=%d",js,endDevices[js]->devNonce, endDevices[js]->devEui.eui, endDevices[js]->version);
-            js++;
-        }
-//        else
-//       {
-//           printVar(" not good j=",PAR_UI8,&j,false,false);
-//           printVar(" Eui=",PAR_EUI64,&(devices[js].Eui),true,true);
-//        }
-    }
-
-    return js;
-}*/
 
 void fill_devices1(void)
 {
@@ -249,6 +135,7 @@ void fill_devices1(void)
 					networkSessions[i]=NULL;
 				}
 				free(dev);
+				dev=NULL;
 			}
 		}
 		else

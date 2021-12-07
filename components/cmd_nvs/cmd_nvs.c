@@ -25,6 +25,7 @@
 #include "esp_log.h"
 #include "crypto.h"
 #include "shell.h"
+#include "device.h"
 
 
 const _par_t _pars[]={
@@ -63,17 +64,20 @@ const _par_t _pars[]={
 	{PAR_KEY128,"Dev1AppKey",{.key={0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x09,0x0a,0x0b,0x0c,0x0d,0x0e,0x0f,0x10}}, "Dev1 Application Key 128 bit",VISIBLE  },
 	{PAR_KEY128,"Dev1NwkKey",{.key={0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x09,0x0a,0x0b,0x0c,0x0d,0x0e,0x0f,0x10}}, "Dev1 Network Key 128 bit",VISIBLE  },
 	{PAR_STR,"Dev1Name",{.str="Device1"}, "Dev1 Name",VISIBLE  },
+	{PAR_EUI64,"Dev1Users",{.eui={0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x00}}, "Users subscribed to device",VISIBLE },
 	{PAR_UI8,"Dev1Version",{ 0 }, "Lorawan Version of Dev: 0 - 1.0, 1 - 1.1",VISIBLE },
 	{PAR_EUI64,"Dev2Eui",{.eui={0x20,0x37,0x11,0x32,0x11,0x06,0x00,0x60}}, "Dev2Eui 64",VISIBLE  },
 	{PAR_KEY128,"Dev2AppKey",{.key={0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x09,0x0a,0x0b,0x0c,0x0d,0x0e,0x0f,0x10}}, "Dev2 Application Key 128 bit",VISIBLE  },
 	{PAR_KEY128,"Dev2NwkKey",{.key={0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x09,0x0a,0x0b,0x0c,0x0d,0x0e,0x0f,0x10}}, "Dev2 Network Key 128 bit",VISIBLE  },
 	{PAR_STR,"Dev2Name",{.str="Device2"}, "Dev2 Name",VISIBLE  },
 	{PAR_UI8,"Dev2Version",{ 0 }, "Lorawan Version of Dev: 0 - 1.0, 1 - 1.1",VISIBLE },
+	{PAR_EUI64,"Dev2Users",{.eui={0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x00}}, "Users subscribed to device",VISIBLE },
 	{PAR_EUI64,"Dev3Eui",{.eui={0x20,0x37,0x11,0x32,0x13,0x13,0x00,0x10}}, "Dev3Eui 64",VISIBLE  },
 	{PAR_KEY128,"Dev3AppKey",{.key={0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x09,0x0a,0x0b,0x0c,0x0d,0x0e,0x0f,0x10}}, "Dev3 Application Key 128 bit",VISIBLE  },
 	{PAR_KEY128,"Dev3NwkKey",{.key={0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x09,0x0a,0x0b,0x0c,0x0d,0x0e,0x0f,0x10}}, "Dev3 Network Key 128 bit",VISIBLE  },
 	{PAR_STR,"Dev3Name",{.str="Device3"}, "Dev3 Name",VISIBLE  },
 	{PAR_UI8,"Dev3Version",{ 0 }, "Lorawan Version of Dev: 0 - 1.0, 1 - 1.1",VISIBLE },
+	{PAR_EUI64,"Dev3Users",{.eui={0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x00}}, "Users subscribed to device",VISIBLE },
 	{PAR_EUI64,"JoinEui",{.eui={0x5C,0x2D,0xE9,0xAC,0xCD,0x98,0,0}}, "JoinEui 64",VISIBLE  },
 	{PAR_UI8,"Erase_EEPROM",{0},"If set erase EEPROM",HIDDEN},
 	{PAR_STR,"SSID",{.str="Paritet"},"SSID",VISIBLE},
@@ -90,12 +94,13 @@ const _par_t _pars[]={
 
 nvs_handle_t nvs, nvs_deveui;
 uint8_t s2lp_console_ex=0;
+GenericEui_t joinEui;
 
 static const char params_namespace[] = {"sx1276_params"};
 static const char params_partition[] = {"sx1276_params"};
-static const char deveui_namespace[] = {"sx1276_deveui"};
-static const char deveui_partition[] = {"sx1276_deveui"};
-static const char n_of_eui_key[]={"N_OF_EUI"};
+//static const char deveui_namespace[] = {"sx1276_deveui"};
+//static const char deveui_partition[] = {"sx1276_deveui"};
+//static const char n_of_eui_key[]={"N_OF_EUI"};
 static const char *TAG = "cmd_nvs";
 
 
@@ -115,13 +120,13 @@ esp_err_t Sync_EEPROM(void)
 		ESP_LOGE(TAG,"nvs_open partition %s namespace %s result=%s",params_partition, params_namespace,esp_err_to_name(err));
     	return err;
     }
-	if((err=nvs_flash_init_partition(deveui_partition))!=ESP_OK) ESP_LOGE(TAG,"nvs_flash_init_partition %s result=%s",deveui_partition, esp_err_to_name(err));
+/*	if((err=nvs_flash_init_partition(deveui_partition))!=ESP_OK) ESP_LOGE(TAG,"nvs_flash_init_partition %s result=%s",deveui_partition, esp_err_to_name(err));
 
 	if((err = nvs_open_from_partition(deveui_partition, deveui_namespace, NVS_READWRITE, &nvs_deveui))!=ESP_OK)
     {
 		ESP_LOGE(TAG,"nvs_open partition %s namespace %s result=%s\n",deveui_partition, deveui_namespace,esp_err_to_name(err));
     	return err;
-    }
+    }*/
     if ((err = nvs_get_u8(nvs, "params", &v8)) != ESP_OK)
     {
 		printf("nvs read params value, result=%s",esp_err_to_name(err));
@@ -199,6 +204,7 @@ esp_err_t Sync_EEPROM(void)
 			return err;
 		}
     }
+    set_s("JOINEUI",&joinEui);
     return ESP_OK;
 }
 
@@ -301,7 +307,7 @@ esp_err_t Commit_params(void)
 	return err;
 }
 
-esp_err_t get_Eui(uint8_t n,GenericEui_t* deveui)
+/*esp_err_t get_Eui(uint8_t n,GenericEui_t* deveui)
 {
     char key[10];
 	esp_err_t err;
@@ -372,34 +378,35 @@ void clear_EUI_type(uint8_t n)
 	{
 		ESP_LOGE(TAG,"Error writing type number %d key %s to nvs_deveui err=%s",n,key,esp_err_to_name(err));
 	}
-}
+}*/
 
 uint16_t get_DevNonce(uint8_t n)
 {
     char uname[16];
     uint64_t val;
 	esp_err_t err;
-	sprintf(uname,"DevNonce%d",n/4);
-	if((err=nvs_get_u64(nvs_deveui,uname,&val))!=ESP_OK)
+	sprintf(uname,"Dev%dNonce",n/4);
+	if((err=nvs_get_u64(nvs,uname,&val))!=ESP_OK)
 	{
-		ESP_LOGE(TAG,"Error reading devnonce number %d key %s from nvs_deveui err=%s",n,uname,esp_err_to_name(err));
+		ESP_LOGE(TAG,"Error reading devnonce number %d key %s from nvs err=%s",n,uname,esp_err_to_name(err));
 	}
 	return ((uint16_t*)(&val))[n%4];
 }
 
 
-uint8_t get_Version(uint8_t n)
+/*uint8_t get_Version(uint8_t n)
 {
     char key[10];
     Record_t val;
 	esp_err_t err;
-	sprintf(key,"PAREUI%03d",n);
-	if((err=nvs_get_u64(nvs_deveui,key,&val.u64))!=ESP_OK)
+	uint8_t version;
+	sprintf(key,"Dev%dVersion",n);
+	if((err=nvs_get_u8(nvs,key,&version))!=ESP_OK)
 	{
-		ESP_LOGE(TAG,"Error reading version number %d key %s from nvs_deveui err=%s",n,key,esp_err_to_name(err));
+		ESP_LOGE(TAG,"Error reading version number %d key %s from nvs err=%s",n,key,esp_err_to_name(err));
 	}
-	return val.x64.x32.x16.version;
-}
+	return version;
+}*/
 
 
 void put_DevNonce(uint8_t n, uint16_t DevNonce)
@@ -407,51 +414,44 @@ void put_DevNonce(uint8_t n, uint16_t DevNonce)
     char uname[16];
     uint64_t val;
 	esp_err_t err;
-	sprintf(uname,"DevNonce%d",n/4);
-	if((err=nvs_get_u64(nvs_deveui,uname,&val))!=ESP_OK)
+	sprintf(uname,"Dev%dNonce",n/4);
+	if((err=nvs_get_u64(nvs,uname,&val))!=ESP_OK)
 	{
 		if(err==ESP_ERR_NVS_NOT_FOUND) val=0;
-		else ESP_LOGE(TAG,"Error reading devnonce number %d key %s from nvs_deveui err=%s",n,uname,esp_err_to_name(err));
+		else ESP_LOGE(TAG,"Error reading devnonce number %d key %s from nvs err=%s",n,uname,esp_err_to_name(err));
 	}
 	((uint16_t*)(&val))[n%4]=DevNonce;
-	if((err=nvs_set_u64(nvs_deveui,uname,val))!=ESP_OK)
+	if((err=nvs_set_u64(nvs,uname,val))!=ESP_OK)
 	{
-		ESP_LOGE(TAG,"Error writing devnonce number %d key %s to nvs_deveui err=%s",n,uname,esp_err_to_name(err));
+		ESP_LOGE(TAG,"Error writing devnonce number %d key %s to nvs err=%s",n,uname,esp_err_to_name(err));
 	}
-	if((err=nvs_commit(nvs_deveui))!=ESP_OK) ESP_LOGE(TAG, "Error while commit nvs_deveui err=%s",esp_err_to_name(err));
+	if((err=nvs_commit(nvs))!=ESP_OK) ESP_LOGE(TAG, "Error while commit nvs_deveui err=%s",esp_err_to_name(err));
 }
 
-void put_Version(uint8_t n, uint8_t version)
+/*void put_Version(uint8_t n, uint8_t version)
 {
     char key[10];
-    Record_t val;
 	esp_err_t err;
-	sprintf(key,"PAREUI%03d",n);
-	if((err=nvs_get_u64(nvs_deveui,key,&val.u64))!=ESP_OK)
-	{
-		if(err==ESP_ERR_NVS_NOT_FOUND) val.u64=0;
-		else ESP_LOGE(TAG,"Error reading version number %d key %s from nvs_deveui err=%s",n,key,esp_err_to_name(err));
-	}
-	val.x64.x32.x16.version=version;
-	if((err=nvs_set_u64(nvs_deveui,key,val.u64))!=ESP_OK)
+	sprintf(key,"Dev%dVersion",n);
+	if((err=nvs_set_u8(nvs,key,version))!=ESP_OK)
 	{
 		ESP_LOGE(TAG,"Error writing version number %d key %s to nvs_deveui err=%s",n,key,esp_err_to_name(err));
 	}
-}
+}*/
 
 uint32_t getinc_JoinNonce(void)
 {
     uint32_t joinNonce;
 	esp_err_t err;
 	const char key[]="joinNonce";
-	if((err=nvs_get_u32(nvs_deveui, key,&joinNonce))!=ESP_OK)
+	if((err=nvs_get_u32(nvs, key,&joinNonce))!=ESP_OK)
 	{
 		if(err==ESP_ERR_NVS_NOT_FOUND)
 		{
 			joinNonce=0;
-			if((err=nvs_set_u32(nvs_deveui,key,joinNonce))!=ESP_OK)
+			if((err=nvs_set_u32(nvs,key,joinNonce))!=ESP_OK)
 			{
-				ESP_LOGE(TAG,"Error writing joinNonce key %s to nvs_deveui err=%s",key,esp_err_to_name(err));
+				ESP_LOGE(TAG,"Error writing joinNonce key %s to nvs err=%s",key,esp_err_to_name(err));
 				return 0xFFFFFFFF;
 			}
 		}
@@ -469,13 +469,14 @@ void put_JoinNonce(uint32_t joinNonce)
 {
 	esp_err_t err;
 	const char key[]="joinNonce";
-	if((err=nvs_set_u32(nvs_deveui,key,joinNonce))!=ESP_OK)
+	if((err=nvs_set_u32(nvs,key,joinNonce))!=ESP_OK)
 	{
-		ESP_LOGE(TAG,"Error writing joinNonce key %s to nvs_deveui err=%s",key,esp_err_to_name(err));
+		ESP_LOGE(TAG,"Error writing joinNonce key %s to nvs err=%s",key,esp_err_to_name(err));
 	}
+	Commit_params();
 }
 
-uint8_t get_eui_numbers(void)
+/*uint8_t get_eui_numbers(void)
 {
 	uint8_t val;
 	esp_err_t err;
@@ -484,9 +485,9 @@ uint8_t get_eui_numbers(void)
 		ESP_LOGE(TAG,"Error reading %s from nvs_deveui err=%s",n_of_eui_key,esp_err_to_name(err));
 	}
 	return val;
-}
+}*/
 
-uint8_t increase_eui_numbers(void)
+/*uint8_t increase_eui_numbers(void)
 {
 	uint8_t val;
 	esp_err_t err;
@@ -500,9 +501,9 @@ uint8_t increase_eui_numbers(void)
 		ESP_LOGE(TAG,"Error writing %s to nvs_deveui err=%s",n_of_eui_key,esp_err_to_name(err));
 	}
 	return val;
-}
+}*/
 
-esp_err_t erase_EEPROM_Data(void)
+/*esp_err_t erase_EEPROM_Data(void)
 {
 	esp_err_t err;
 	uint8_t val;
@@ -528,10 +529,10 @@ esp_err_t erase_EEPROM_Data(void)
 		return err;
 	}
 	return Commit_deveui();
-}
+}*/
 
 
-esp_err_t put_Keys(uint8_t n, uint8_t* NwkKey, uint8_t* AppKey)
+/*esp_err_t put_Keys(uint8_t n, uint8_t* NwkKey, uint8_t* AppKey)
 {
     char nwkkeyName[16];
     char appkeyName[16];
@@ -547,10 +548,10 @@ esp_err_t put_Keys(uint8_t n, uint8_t* NwkKey, uint8_t* AppKey)
 		ESP_LOGE(TAG,"Error writing AppKey number %d key %s from nvs_deveui err=%s",n,appkeyName,esp_err_to_name(err));
 	}
 	return err;
-}
+}*/
 
 
-esp_err_t get_Keys(uint8_t n, uint8_t* NwkKey, uint8_t* AppKey)
+/*esp_err_t get_Keys(uint8_t n, uint8_t* NwkKey, uint8_t* AppKey)
 {
     char nwkkeyName[16];
     char appkeyName[16];
@@ -567,16 +568,16 @@ esp_err_t get_Keys(uint8_t n, uint8_t* NwkKey, uint8_t* AppKey)
 		ESP_LOGE(TAG,"Error reading AppKey number %d key %s from nvs_deveui err=%s",n,appkeyName,esp_err_to_name(err));
 	}
 	return err;
-}
+}*/
 
 
 
-esp_err_t Commit_deveui(void)
+/*esp_err_t Commit_deveui(void)
 {
 	esp_err_t err;
 	if((err=nvs_commit(nvs_deveui))!=ESP_OK) ESP_LOGE(TAG, "Error while commit nvs_deveui err=%s",esp_err_to_name(err));
 	return err;
-}
+}*/
 
 
 void print_SHAKey(void)
@@ -594,35 +595,35 @@ esp_err_t get_SHAKey(void)
 	esp_err_t err;
 	const char shaKeyName[8]={"SHAKey"};
 	size_t len;
-	if((err=nvs_get_blob(nvs_deveui,shaKeyName,NULL,&len))!=ESP_OK)
+	if((err=nvs_get_blob(nvs,shaKeyName,NULL,&len))!=ESP_OK)
 	{
 		if(err!=ESP_ERR_NVS_NOT_FOUND)
 		{
-			ESP_LOGI(TAG,"Error reading length of key, key %s from nvs_deveui err=%s",shaKeyName,esp_err_to_name(err));
+			ESP_LOGI(TAG,"Error reading length of key, key %s from nvs err=%s",shaKeyName,esp_err_to_name(err));
 			return err;
 		}
 		if(generate_SHAKey()!=ESP_OK)
 		{
-			ESP_LOGE(TAG,"Error generating SHAKey %s for nvs_deveui",shaKeyName);
+			ESP_LOGE(TAG,"Error generating SHAKey %s for nvs",shaKeyName);
 			return ESP_FAIL;
 		}
 		print_SHAKey();
-		if((err=nvs_set_blob(nvs_deveui,shaKeyName,shaKey,CRYPTO_KEY_LENGTH))!=ESP_OK)
+		if((err=nvs_set_blob(nvs,shaKeyName,shaKey,CRYPTO_KEY_LENGTH))!=ESP_OK)
 		{
-			ESP_LOGE(TAG,"Error writing shaKey, key %s to nvs_deveui err=%s",shaKeyName,esp_err_to_name(err));
+			ESP_LOGE(TAG,"Error writing shaKey, key %s to nvs err=%s",shaKeyName,esp_err_to_name(err));
 			return err;
 		}
-		if((err=Commit_deveui())!=ESP_OK) return err;
+		if((err=Commit_params())!=ESP_OK) return err;
 		return ESP_OK;
 	}
 	if(len!=CRYPTO_KEY_LENGTH)
 	{
-		ESP_LOGE(TAG,"Length of key is not equal %d , key %s from nvs_deveui",CRYPTO_KEY_LENGTH,shaKeyName);
+		ESP_LOGE(TAG,"Length of key is not equal %d , key %s from nvs",CRYPTO_KEY_LENGTH,shaKeyName);
 		return ESP_ERR_NVS_INVALID_LENGTH;
 	}
-	if((err=nvs_get_blob(nvs_deveui,shaKeyName,shaKey,&len))!=ESP_OK)
+	if((err=nvs_get_blob(nvs,shaKeyName,shaKey,&len))!=ESP_OK)
 	{
-		ESP_LOGE(TAG,"Error reading length of key, key %s from nvs_deveui err=%s",shaKeyName,esp_err_to_name(err));
+		ESP_LOGE(TAG,"Error reading length of key, key %s from nvs err=%s",shaKeyName,esp_err_to_name(err));
 		return err;
 	}
 	return ESP_OK;

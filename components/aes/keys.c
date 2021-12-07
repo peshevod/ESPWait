@@ -11,7 +11,7 @@
 #include "keys.h"
 
 
-void computeJSKey(Key_t keytype, uint8_t* NwkKey, GenericEui_t devEui, uint8_t* JSKey)
+void computeJSKey(const Key_t keytype, const uint8_t* NwkKey, const GenericEui_t devEui, uint8_t* JSKey)
 {
 	uint8_t aesBuffer[AES_BLOCKSIZE];
     uint8_t bufferIndex = 0;
@@ -24,7 +24,7 @@ void computeJSKey(Key_t keytype, uint8_t* NwkKey, GenericEui_t devEui, uint8_t* 
 }
 
 
-void computeKey11(Key_t keytype, uint8_t* Key, uint32_t joinNonce, GenericEui_t joinEui, uint16_t devNonce, uint8_t* outKey)
+void computeKey11(const Key_t keytype, const uint8_t* Key, const uint32_t joinNonce, const GenericEui_t joinEui, const uint16_t devNonce, uint8_t* outKey)
 {
 	uint8_t aesBuffer[AES_BLOCKSIZE];
     uint8_t bufferIndex = 0;
@@ -40,7 +40,7 @@ void computeKey11(Key_t keytype, uint8_t* Key, uint32_t joinNonce, GenericEui_t 
     memcpy(outKey,aesBuffer,16);
 }
 
-void computeKey10(Key_t keytype, uint8_t* Key, uint32_t joinNonce, uint32_t netID, uint16_t devNonce, uint8_t* outKey)
+void computeKey10(const Key_t keytype, const uint8_t* Key, const uint32_t joinNonce, const uint32_t netID, const uint16_t devNonce, uint8_t* outKey)
 {
 	uint8_t aesBuffer[AES_BLOCKSIZE];
     uint8_t bufferIndex = 0;
@@ -60,10 +60,10 @@ void computeKeys(NetworkSession_t* ns)
 {
 	if(ns->endDevice->version==1)
 	{
-		computeKey11(KEY_AppSKey, ns->endDevice->AppKey, ns->joinNonce, ns->joinServer->joinEui, ns->endDevice->devNonce, ns->AppSKey);
-		computeKey11(KEY_FNwkSIntKey, ns->endDevice->NwkKey, ns->joinNonce, ns->joinServer->joinEui, ns->endDevice->devNonce, ns->FNwkSIntKey);
-		computeKey11(KEY_SNwkSIntKey, ns->endDevice->NwkKey, ns->joinNonce, ns->joinServer->joinEui, ns->endDevice->devNonce, ns->SNwkSIntKey);
-		computeKey11(KEY_NwkSEncKey, ns->endDevice->NwkKey, ns->joinNonce, ns->joinServer->joinEui, ns->endDevice->devNonce, ns->NwkSEncKey);
+		computeKey11(KEY_AppSKey, ns->endDevice->AppKey, ns->joinNonce, ns->joinEui, ns->endDevice->devNonce, ns->AppSKey);
+		computeKey11(KEY_FNwkSIntKey, ns->endDevice->NwkKey, ns->joinNonce, ns->joinEui, ns->endDevice->devNonce, ns->FNwkSIntKey);
+		computeKey11(KEY_SNwkSIntKey, ns->endDevice->NwkKey, ns->joinNonce, ns->joinEui, ns->endDevice->devNonce, ns->SNwkSIntKey);
+		computeKey11(KEY_NwkSEncKey, ns->endDevice->NwkKey, ns->joinNonce, ns->joinEui, ns->endDevice->devNonce, ns->NwkSEncKey);
 		computeJSKey(KEY_JSEncKey, ns->endDevice->NwkKey, ns->endDevice->devEui, ns->JSEncKey);
 		computeJSKey(KEY_JSIntKey, ns->endDevice->NwkKey, ns->endDevice->devEui, ns->JSIntKey);
 	}

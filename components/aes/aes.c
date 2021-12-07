@@ -74,14 +74,14 @@ void AESCalcDecodeKey(unsigned char* key)
 	while(_roundCounter>0);
 }
 
-void AESEncodeLoRa(unsigned char* block, unsigned char* key)
+void AESEncodeLoRa(unsigned char* block, const unsigned char* key)
 {
     uint8_t useKey[16];
     memcpy(useKey, key, sizeof(useKey));
     AESEncode(block, useKey);
 }
 
-void AESDecodeLoRa(unsigned char* block, unsigned char* key)
+void AESDecodeLoRa(unsigned char* block, const unsigned char* key)
 {
     uint8_t useKey[16];
     memcpy(useKey, key, sizeof(useKey));
@@ -89,7 +89,7 @@ void AESDecodeLoRa(unsigned char* block, unsigned char* key)
     AESDecode(block, useKey);
 }
 
-void AESEncode(uint8_t* block, uint8_t* useKey)
+void AESEncode(uint8_t* block, const uint8_t* useKey)
 {
 //    ESP_LOGI(TAG,"point 7");
 	aes_hal_setkey(useKey, AES_128_KEY_BYTES, ESP_AES_ENCRYPT);
@@ -98,7 +98,7 @@ void AESEncode(uint8_t* block, uint8_t* useKey)
 //    ESP_LOGI(TAG,"point 9");
 }
 
-void AESDecode(uint8_t* block, uint8_t* useKey)
+void AESDecode(uint8_t* block, const uint8_t* useKey)
 {
 	aes_hal_setkey(useKey, AES_128_KEY_BYTES, ESP_AES_DECRYPT);
 	aes_hal_transform_block(block, block);
@@ -164,7 +164,7 @@ static void GenerateSubkey (uint8_t* key, uint8_t* k1, uint8_t* k2)
     }
 }
 
-void AESCmac(uint8_t* key, uint8_t* output, uint8_t* input, uint8_t size)
+void AESCmac(const uint8_t* key, uint8_t* output, const uint8_t* input, const uint8_t size)
 {
     uint8_t n = 0, i = 0, j =0;
     bool flag = false;
