@@ -107,6 +107,10 @@
     <td><v-chip label class="grey lighten-4">LoRa Version</v-chip></td>
     <td><v-chip label class="blue lighten-5">{{Device.Version}}</v-chip></td>
   </tr>
+  <tr>
+    <td><v-chip label class="grey lighten-4">Users</v-chip></td>
+    <td><v-chip v-for="user in Device.Users" :key="user.id" label class="blue lighten-5 me-1">{{user}}</v-chip></td>
+  </tr>
 
 </tbody>
 </template>
@@ -199,6 +203,7 @@ export default {
     AppKey:null,
     NwkKey:null,
     Version:null,
+    Users:null,
     overlay_add:false,
     overlay_edit:[],
     overlay_del:[],
@@ -254,6 +259,9 @@ export default {
         this.result.Devices.forEach((currentValue,index) =>
         {
           this.result.Devices[index].Version=this.Versions[data.data.Devices[index].Version];
+//          this.result.Devices[index].User0=data.data.Devices[index].Users[0];
+//          this.result.Devices[index].Users[1]='victor';	
+//          this.result.Devices[index].Users[2]='semen';	
           this.overlay_edit[index]=false;
           this.overlay_del[index]=false;
           this.view_app[index]=false;

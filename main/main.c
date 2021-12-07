@@ -832,7 +832,7 @@ static void system_init()
     char xxx[64];
     uint32_t now=(uint32_t)time(NULL);
     sprintf(xxx,"Message sent at %d",now);
-    sendMessage("ilya","New Message from ESPWait",xxx);
+//    sendMessage("ilya","New Message from ESPWait",xxx);
     CppTest* cpptest=CppTest_new();
 
 }
