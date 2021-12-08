@@ -1,5 +1,5 @@
 <template>
-  <v-container fluid class="red lighten-4 d-flex align-start justify-space-between" fill-height>
+  <v-container v-if="ready" fluid class="red lighten-4 d-flex align-start justify-space-between" fill-height>
 <!-- Main Card -->
     <v-card class="grey lighten-4 pa-5">
       <v-container>
@@ -54,6 +54,7 @@
                 @click:append="show2 = !show2"
                 :type="show2 ? 'password' : 'text'">
               </v-text-field>
+              <v-select outlined label="Users" multiple :items="Accounts" v-model="DevUsers" class="mx-5"></v-select>
               <v-row class="d-flex justify-center">
                 <v-btn @click="add" class="lime lighten-4 black--text ma-5" :disabled="!validate">Add</v-btn>
                 <v-btn @click="cancel(0)" class="lime lighten-4 black--text ma-5" :disabled="!validate">Cancel</v-btn>
@@ -109,7 +110,7 @@
   </tr>
   <tr>
     <td><v-chip label class="grey lighten-4">Users</v-chip></td>
-    <td><v-chip v-for="user in Device.Users" :key="user.id" label class="blue lighten-5 me-1">{{user}}</v-chip></td>
+    <td><v-chip v-for="user in Device.Users" :key="user" label class="blue lighten-5 me-1">{{user}}</v-chip></td>
   </tr>
 
 </tbody>
@@ -132,6 +133,7 @@
                     <v-card class="d-flex justify-center flex-column pa-5">
                       <v-text-field outlined counter maxlength="16" :rules="rules" label="Device Name" v-model="result.Devices[index].DevName"></v-text-field>
                       <v-text-field autofocus outlined counter maxlength="16" :rules="rules16" label="EUI" v-model="result.Devices[index].DevEUI"></v-text-field>
+                      <v-select outlined counter maxlength="32" :rules="rules" label="LoRa Version" :items="Versions" v-model="result.Devices[index].Version"></v-select>
                       <v-text-field
                         autofocus 
                         outlined
@@ -156,7 +158,7 @@
                         :append-icon="!show2 ? 'mdi-eye' : 'mdi-eye-off'"
                         @click:append="show2 = !show2"
                         :type="show2 ? 'password' : 'text'">                       </v-text-field>
-                      <v-select outlined counter maxlength="32" :rules="rules" label="LoRa Version" :items="Versions" v-model="result.Devices[index].Version"></v-select>
+                      <v-select outlined label="Users" multiple :items="Accounts" v-model="result.Devices[index].Users"></v-select>
                       <v-row  class="d-flex justify-center">
                         <v-btn :disabled="!vld(index)" @click="save(index)" class="lime lighten-4 black--text ma-5">Save</v-btn>
                         <v-btn @click="cancel(index)" class="lime lighten-4 black--text ma-5">Cancel</v-btn>
@@ -197,13 +199,15 @@ import '../assets/css/my.css'
 // @ is an alias to /src
 export default {
   data: () => ({
+    ready:false,
     result:null,
+    Accounts:[],
     DevName:null,
     DevEUI:null,
     AppKey:null,
     NwkKey:null,
     Version:null,
-    Users:null,
+    DevUsers: [],
     overlay_add:false,
     overlay_edit:[],
     overlay_del:[],
@@ -249,19 +253,39 @@ export default {
         && this.result.Devices[index].DevEUI.length==16 && this.result.Devices[index].AppKey.length==32 && this.result.Devices[index].NwkKey.length==32);
     },  
     get () {
+      this.ready=false;
       this.$ajax.get(this.$store.state.server+'/devices',{
         headers: {
           'Authorization': 'Bearer ' + this.$store.state.jwt_token
         }
       })
       .then(data => {
+//        console.log(data.data.Devices.toString());
         this.result=data.data;
+        this.$ajax.get(this.$store.state.server+'/accounts',{
+          headers: {
+            'Authorization': 'Bearer ' + this.$store.state.jwt_token
+          }
+        })
+        .then(response => {
+          response.data.Users.forEach((currentValue,index) => {
+            this.Accounts[index]=response.data.Users[index].Username;
+//      console.log('index='+index+' '+this.Accounts[index].toString());
+        this.ready=true;
+          })
+        })
+        .catch(e => {   
+          if (e.response && e.response.status === 400) {
+            this.error_message=e.response.data.error;
+          }
+          if (e.response && e.response.status === 401) {
+             this.$router.push({ name: "login" });
+          } 
+        });
         this.result.Devices.forEach((currentValue,index) =>
         {
+//        console.log('index='+index+' '+this.result.Devices[index].Users.toString());
           this.result.Devices[index].Version=this.Versions[data.data.Devices[index].Version];
-//          this.result.Devices[index].User0=data.data.Devices[index].Users[0];
-//          this.result.Devices[index].Users[1]='victor';	
-//          this.result.Devices[index].Users[2]='semen';	
           this.overlay_edit[index]=false;
           this.overlay_del[index]=false;
           this.view_app[index]=false;
@@ -269,7 +293,7 @@ export default {
           this.edit_app[index]=false;
           this.edit_nwk[index]=false;
         });
-        this.result.overlay_add=false;  
+        this.overlay_add=false;
       })
       .catch(e => {   
         if (e.response && e.response.status === 400) {
@@ -307,6 +331,8 @@ export default {
       this.overlay_del[index]=false;
       this.overlay_add=false;
       this.$forceUpdate();
+      this.$forceUpdate();
+//      this.$mount();
     },
     del (index) {
       this.overlay_edit[index]=false;
@@ -332,7 +358,8 @@ export default {
         'DevEUI': this.DevEUI,
         'AppKey': this.AppKey,
         'NwkKey': this.NwkKey,
-	'Version': this.Versions.findIndex(element => {return element===this.Version;}).toString()
+	'Version': this.Versions.findIndex(element => {return element===this.Version;}).toString(),
+        'Users': this.DevUsers
       },
       {
           headers: {
@@ -357,6 +384,7 @@ export default {
         'DevName': this.result.Devices[index].DevName,
         'AppKey': this.result.Devices[index].AppKey,
         'NwkKey': this.result.Devices[index].NwkKey,
+        'Users': this.result.Devices[index].Users,
 	'Version': this.Versions.findIndex(element => {return element===this.result.Devices[index].Version;}).toString()
       },
       {
