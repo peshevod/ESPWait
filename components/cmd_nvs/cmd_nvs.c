@@ -79,7 +79,7 @@ const _par_t _pars[]={
 	{PAR_UI8,"Dev3Version",{ 0 }, "Lorawan Version of Dev: 0 - 1.0, 1 - 1.1",VISIBLE },
 	{PAR_EUI64,"Dev3Users",{.eui={0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x00}}, "Users subscribed to device",VISIBLE },
 	{PAR_EUI64,"JoinEui",{.eui={0x5C,0x2D,0xE9,0xAC,0xCD,0x98,0,0}}, "JoinEui 64",VISIBLE  },
-	{PAR_UI8,"Erase_EEPROM",{0},"If set erase EEPROM",HIDDEN},
+	{PAR_UI8,"Erase_EEPROM",{0},"1 - rewrite params from this table, pars not in table saved, 2 - erase all parameters",HIDDEN},
 	{PAR_STR,"SSID",{.str="Paritet"},"SSID",VISIBLE},
 //	{PAR_STR,"SSID",{.str="Fire55-keen25"},"SSID",VISIBLE},
 	{PAR_STR,"PASSWD",{.str="narrowcartoon617"},"Password for ssid",VISIBLE},
@@ -98,9 +98,6 @@ GenericEui_t joinEui;
 
 static const char params_namespace[] = {"sx1276_params"};
 static const char params_partition[] = {"sx1276_params"};
-//static const char deveui_namespace[] = {"sx1276_deveui"};
-//static const char deveui_partition[] = {"sx1276_deveui"};
-//static const char n_of_eui_key[]={"N_OF_EUI"};
 static const char *TAG = "cmd_nvs";
 
 
@@ -120,90 +117,139 @@ esp_err_t Sync_EEPROM(void)
 		ESP_LOGE(TAG,"nvs_open partition %s namespace %s result=%s",params_partition, params_namespace,esp_err_to_name(err));
     	return err;
     }
-/*	if((err=nvs_flash_init_partition(deveui_partition))!=ESP_OK) ESP_LOGE(TAG,"nvs_flash_init_partition %s result=%s",deveui_partition, esp_err_to_name(err));
-
-	if((err = nvs_open_from_partition(deveui_partition, deveui_namespace, NVS_READWRITE, &nvs_deveui))!=ESP_OK)
-    {
-		ESP_LOGE(TAG,"nvs_open partition %s namespace %s result=%s\n",deveui_partition, deveui_namespace,esp_err_to_name(err));
-    	return err;
-    }*/
     if ((err = nvs_get_u8(nvs, "params", &v8)) != ESP_OK)
     {
 		printf("nvs read params value, result=%s",esp_err_to_name(err));
     	return err;
     }
 
-    if(!v8)
-    {
-        uint8_t eui[8];
-    	uint8_t mac[6];
-    	ESP_ERROR_CHECK(esp_efuse_mac_get_default(mac));
-        for(uint8_t j=0;j<6;j++) eui[j+2]=mac[j];
-        eui[0]=0;
-        eui[1]=0;
-    	uint32_t uid=((uint32_t)mac[5])+(((uint32_t)mac[4])<<8)+(((uint32_t)mac[3])<<16)+(((uint32_t)mac[2])<<24);
-    	ESP_LOGI(TAG,"MAC: %02x %02x %02x %02x %02x %02x",mac[0],mac[1],mac[2],mac[3],mac[4],mac[5]);
-        while(__pars->type)
-        {
-            if(__pars->type==PAR_UI8)
-            {
-                if ((err = nvs_set_u8(nvs, __pars->c, __pars->u.ui8par)) != ESP_OK)
-           		{
-                	return err;
-           		}
-            }
-            else if(__pars->type==PAR_UI32)
-            {
-                if(!strcmp(__pars->c,"UID"))
-                {
-                	if ((err = nvs_set_u32(nvs, __pars->c, uid)) != ESP_OK) return err;
-                }
-                else if ((err = nvs_set_u32(nvs, __pars->c, __pars->u.ui32par)) != ESP_OK)
-           		{
-                	return err;
-           		}
-            }
-            else if(__pars->type==PAR_I32)
-            {
-                if ((err = nvs_set_i32(nvs, __pars->c, __pars->u.i32par)) != ESP_OK)
-           		{
-                	return err;
-           		}
-            }
-            else if(__pars->type==PAR_KEY128)
-            {
-            	if((err = nvs_set_blob(nvs, __pars->c, __pars->u.key,16)) != ESP_OK)
-          		{
-            		return err;
-           		}
-            }
-            else if(__pars->type==PAR_EUI64)
-            {
-               	if(!strcmp(__pars->c,"JoinEui") || !strcmp(__pars->c,"DevEui"))
-               	{
-               		if((err = nvs_set_u64(nvs, __pars->c,*((uint64_t*)eui))) != ESP_OK) return err;
-               	}
-               	else if((err = nvs_set_u64(nvs, __pars->c,__pars->u.ui64par)) != ESP_OK)
-          		{
-            		return err;
-           		}
-            }
-            else if(__pars->type==PAR_STR)
-            {
-            	if((err = nvs_set_str(nvs, __pars->c,__pars->u.str)) != ESP_OK)
-          		{
-            		return err;
-           		}
-            }
-            __pars++;
-        }
-		nvs_set_u8(nvs,"params",1);
-
-		if((err=nvs_commit(nvs))!=ESP_OK)
+	uint8_t mac[6];
+	uint8_t eui[8];
+	ESP_ERROR_CHECK(esp_efuse_mac_get_default(mac));
+	for(uint8_t j=0;j<6;j++) eui[j+2]=mac[j];
+	eui[0]=0;
+	eui[1]=0;
+	uint32_t uid=((uint32_t)mac[5])+(((uint32_t)mac[4])<<8)+(((uint32_t)mac[3])<<16)+(((uint32_t)mac[2])<<24);
+	ESP_LOGI(TAG,"MAC: %02x %02x %02x %02x %02x %02x",mac[0],mac[1],mac[2],mac[3],mac[4],mac[5]);
+	for(__pars=_pars;__pars->type;__pars++)
+	{
+		if(__pars->type==PAR_UI8)
 		{
-			return err;
+			uint8_t tmp8;
+			if((v8 && (err=nvs_get_u8(nvs, __pars->c, &tmp8))==ESP_ERR_NVS_NOT_FOUND) || !v8)
+			{
+				if((err = nvs_set_u8(nvs, __pars->c, __pars->u.ui8par)) == ESP_OK) continue;
+				else
+				{
+					ESP_LOGE(TAG,"error writing %s to nvs err=%s", __pars->c, esp_err_to_name(err));
+					return err;
+				}
+			}
+			else if(v8 && err!=ESP_OK)
+			{
+					ESP_LOGE(TAG,"error reading %s from nvs err=%s", __pars->c, esp_err_to_name(err));
+					return err;
+			}
 		}
-    }
+		else if(__pars->type==PAR_UI32)
+		{
+			uint32_t tmp32;
+			if((v8 && (err=nvs_get_u32(nvs, __pars->c, &tmp32))==ESP_ERR_NVS_NOT_FOUND) || !v8)
+			{
+				if(!strcmp(__pars->c,"UID")) err = nvs_set_u32(nvs, __pars->c, uid);
+				else err = nvs_set_u32(nvs, __pars->c, __pars->u.ui32par);
+				if(err == ESP_OK) continue;
+				else
+				{
+					ESP_LOGE(TAG,"error writing %s to nvs err=%s", __pars->c, esp_err_to_name(err));
+					return err;
+				}
+			}
+			else if(v8 && err!=ESP_OK)
+			{
+					ESP_LOGE(TAG,"error reading %s from nvs err=%s", __pars->c, esp_err_to_name(err));
+					return err;
+			}
+		}
+		else if(__pars->type==PAR_I32)
+		{
+			int32_t tmpi32;
+			if((v8 && (err=nvs_get_i32(nvs, __pars->c, &tmpi32))==ESP_ERR_NVS_NOT_FOUND) || !v8)
+			{
+				if((err = nvs_set_i32(nvs, __pars->c, __pars->u.i32par)) == ESP_OK) continue;
+				else
+				{
+					ESP_LOGE(TAG,"error writing %s to nvs err=%s", __pars->c, esp_err_to_name(err));
+					return err;
+				}
+			}
+			else if(v8 && err!=ESP_OK)
+			{
+					ESP_LOGE(TAG,"error reading %s from nvs err=%s", __pars->c, esp_err_to_name(err));
+					return err;
+			}
+		}
+		else if(__pars->type==PAR_KEY128)
+		{
+			size_t blen;
+			if((v8 && (err=nvs_get_blob(nvs, __pars->c, NULL,&blen))==ESP_ERR_NVS_NOT_FOUND) || !v8)
+			{
+				if((err = nvs_set_blob(nvs, __pars->c, __pars->u.key,16)) == ESP_OK) continue;
+				else
+				{
+					ESP_LOGE(TAG,"error writing %s to nvs err=%s", __pars->c, esp_err_to_name(err));
+					return err;
+				}
+			}
+			else if(v8 && err!=ESP_OK)
+			{
+					ESP_LOGE(TAG,"error reading %s from nvs err=%s", __pars->c, esp_err_to_name(err));
+					return err;
+			}
+		}
+		else if(__pars->type==PAR_EUI64)
+		{
+			uint64_t tmp64;
+			if((v8 && (err=nvs_get_u64(nvs, __pars->c, &tmp64))==ESP_ERR_NVS_NOT_FOUND) || !v8)
+			{
+				if((err = nvs_set_u64(nvs, __pars->c, __pars->u.ui64par)) == ESP_OK) continue;
+				else
+				{
+					ESP_LOGE(TAG,"error writing %s to nvs err=%s", __pars->c, esp_err_to_name(err));
+					return err;
+				}
+			}
+			else if(v8 && err!=ESP_OK)
+			{
+					ESP_LOGE(TAG,"error reading %s from nvs err=%s", __pars->c, esp_err_to_name(err));
+					return err;
+			}
+		}
+		else if(__pars->type==PAR_STR)
+		{
+			size_t slen;
+			if((v8 && (err=nvs_get_str(nvs, __pars->c, NULL, &slen))==ESP_ERR_NVS_NOT_FOUND) || !v8)
+			{
+				if((err = nvs_set_str(nvs, __pars->c, __pars->u.str)) == ESP_OK) continue;
+				else
+				{
+					ESP_LOGE(TAG,"error writing %s to nvs err=%s", __pars->c, esp_err_to_name(err));
+					return err;
+				}
+			}
+			else if(v8 && err!=ESP_OK)
+			{
+					ESP_LOGE(TAG,"error reading %s from nvs err=%s", __pars->c, esp_err_to_name(err));
+					return err;
+			}
+		}
+	}
+	if(!v8) nvs_set_u8(nvs,"params",1);
+
+	if((err=nvs_commit(nvs))!=ESP_OK)
+	{
+		return err;
+	}
     set_s("JOINEUI",&joinEui);
     return ESP_OK;
 }
@@ -286,6 +332,28 @@ esp_err_t Read_eui_params(const char* key, uint8_t* eui)
 esp_err_t Write_str_params(const char* key, char* str)
 {
 	esp_err_t err;
+	char* value;
+	size_t len;
+	if((err=nvs_get_str(nvs,key,NULL,&len))!=ESP_OK && err!=ESP_ERR_NVS_NOT_FOUND)
+	{
+		ESP_LOGE(TAG,"Error reading %s value from nvs err=%s", key, esp_err_to_name(err));
+		return err;
+	}
+	else if(err==ESP_OK)
+	{
+		value=malloc(len+1);
+		if((err=nvs_get_str(nvs,key,value,&len))!=ESP_OK)
+		{
+			ESP_LOGE(TAG,"Error reading %s value from nvs err=%s", key, esp_err_to_name(err));
+			free(value);
+			return err;
+		}
+		if(!strcmp(value,str))
+		{
+			free(value);
+			return ESP_OK;
+		}
+	}
 	if((err=nvs_set_str(nvs,key,str))!=ESP_OK) ESP_LOGE(TAG, "Error writing str value to nvs err=%s",esp_err_to_name(err));
 	return err;
 }
@@ -307,78 +375,6 @@ esp_err_t Commit_params(void)
 	return err;
 }
 
-/*esp_err_t get_Eui(uint8_t n,GenericEui_t* deveui)
-{
-    char key[10];
-	esp_err_t err;
-	sprintf(key,"DEVEUI%03d",n);
-	if((err=nvs_get_u64(nvs_deveui,key,&deveui->eui))!=ESP_OK)
-	{
-		ESP_LOGE(TAG,"Error reading eui number %d key %s from nvs_deveui err=%s",n,key,esp_err_to_name(err));
-	}
-	return err;
-}
-
-esp_err_t put_Eui(uint8_t n,GenericEui_t* deveui)
-{
-    char key[10];
-	esp_err_t err;
-	sprintf(key,"DEVEUI%03d",n);
-	if((err=nvs_set_u64(nvs_deveui,key,deveui->eui))!=ESP_OK)
-	{
-		ESP_LOGE(TAG,"Error writing eui number %d key %s to nvs_deveui err=%s",n,key,esp_err_to_name(err));
-	}
-	return err;
-}
-
-uint8_t get_EUI_type(uint8_t n)
-{
-    char key[10];
-    Record_t val;
-	esp_err_t err;
-	sprintf(key,"PAREUI%03d",n);
-	if((err=nvs_get_u64(nvs_deveui,key,&val.u64))!=ESP_OK)
-	{
-		ESP_LOGE(TAG,"Error reading type number %d key %s from nvs_deveui err=%s",n,key,esp_err_to_name(err));
-	}
-	return val.x64.x32.x16.type;
-}
-
-void set_EUI_type(uint8_t n)
-{
-    char key[10];
-    Record_t val;
-	esp_err_t err;
-	sprintf(key,"PAREUI%03d",n);
-	if((err=nvs_get_u64(nvs_deveui,key,&val.u64))!=ESP_OK)
-	{
-		if(err==ESP_ERR_NVS_NOT_FOUND) val.u64=0;
-		else ESP_LOGE(TAG,"Error reading type number %d key %s from nvs_deveui err=%s",n,key,esp_err_to_name(err));
-	}
-	val.x64.x32.x16.type=1;
-	if((err=nvs_set_u64(nvs_deveui,key,val.u64))!=ESP_OK)
-	{
-		ESP_LOGE(TAG,"Error writing type number %d key %s to nvs_deveui err=%s",n,key,esp_err_to_name(err));
-	}
-}
-
-void clear_EUI_type(uint8_t n)
-{
-    char key[10];
-    Record_t val;
-	esp_err_t err;
-	sprintf(key,"PAREUI%03d",n);
-	if((err=nvs_get_u64(nvs_deveui,key,&val.u64))!=ESP_OK)
-	{
-		if(err==ESP_ERR_NVS_NOT_FOUND) val.u64=0;
-		else ESP_LOGE(TAG,"Error reading type number %d key %s from nvs_deveui err=%s",n,key,esp_err_to_name(err));
-	}
-	val.x64.x32.x16.type=0;
-	if((err=nvs_set_u64(nvs_deveui,key,val.u64))!=ESP_OK)
-	{
-		ESP_LOGE(TAG,"Error writing type number %d key %s to nvs_deveui err=%s",n,key,esp_err_to_name(err));
-	}
-}*/
 
 uint16_t get_DevNonce(uint8_t n)
 {
@@ -388,25 +384,11 @@ uint16_t get_DevNonce(uint8_t n)
 	sprintf(uname,"Dev%dNonce",n/4);
 	if((err=nvs_get_u64(nvs,uname,&val))!=ESP_OK)
 	{
-		ESP_LOGE(TAG,"Error reading devnonce number %d key %s from nvs err=%s",n,uname,esp_err_to_name(err));
+		if(err==ESP_ERR_NVS_NOT_FOUND) put_DevNonce(n,0);
+		else ESP_LOGE(TAG,"Error reading devnonce number %d key %s from nvs err=%s",n,uname,esp_err_to_name(err));
 	}
 	return ((uint16_t*)(&val))[n%4];
 }
-
-
-/*uint8_t get_Version(uint8_t n)
-{
-    char key[10];
-    Record_t val;
-	esp_err_t err;
-	uint8_t version;
-	sprintf(key,"Dev%dVersion",n);
-	if((err=nvs_get_u8(nvs,key,&version))!=ESP_OK)
-	{
-		ESP_LOGE(TAG,"Error reading version number %d key %s from nvs err=%s",n,key,esp_err_to_name(err));
-	}
-	return version;
-}*/
 
 
 void put_DevNonce(uint8_t n, uint16_t DevNonce)
@@ -420,25 +402,16 @@ void put_DevNonce(uint8_t n, uint16_t DevNonce)
 		if(err==ESP_ERR_NVS_NOT_FOUND) val=0;
 		else ESP_LOGE(TAG,"Error reading devnonce number %d key %s from nvs err=%s",n,uname,esp_err_to_name(err));
 	}
-	((uint16_t*)(&val))[n%4]=DevNonce;
-	if((err=nvs_set_u64(nvs,uname,val))!=ESP_OK)
+	if(((uint16_t*)(&val))[n%4]!=DevNonce)
 	{
-		ESP_LOGE(TAG,"Error writing devnonce number %d key %s to nvs err=%s",n,uname,esp_err_to_name(err));
+		((uint16_t*)(&val))[n%4]=DevNonce;
+		if((err=nvs_set_u64(nvs,uname,val))!=ESP_OK)
+		{
+			ESP_LOGE(TAG,"Error writing devnonce number %d key %s to nvs err=%s",n,uname,esp_err_to_name(err));
+		}
+		if((err=nvs_commit(nvs))!=ESP_OK) ESP_LOGE(TAG, "Error while commit nvs_deveui err=%s",esp_err_to_name(err));
 	}
-	if((err=nvs_commit(nvs))!=ESP_OK) ESP_LOGE(TAG, "Error while commit nvs_deveui err=%s",esp_err_to_name(err));
 }
-
-/*void put_Version(uint8_t n, uint8_t version)
-{
-    char key[10];
-	esp_err_t err;
-	sprintf(key,"Dev%dVersion",n);
-	if((err=nvs_set_u8(nvs,key,version))!=ESP_OK)
-	{
-		ESP_LOGE(TAG,"Error writing version number %d key %s to nvs_deveui err=%s",n,key,esp_err_to_name(err));
-	}
-}*/
-
 uint32_t getinc_JoinNonce(void)
 {
     uint32_t joinNonce;
@@ -475,109 +448,6 @@ void put_JoinNonce(uint32_t joinNonce)
 	}
 	Commit_params();
 }
-
-/*uint8_t get_eui_numbers(void)
-{
-	uint8_t val;
-	esp_err_t err;
-	if((err=nvs_get_u8(nvs_deveui,n_of_eui_key,&val))!=ESP_OK)
-	{
-		ESP_LOGE(TAG,"Error reading %s from nvs_deveui err=%s",n_of_eui_key,esp_err_to_name(err));
-	}
-	return val;
-}*/
-
-/*uint8_t increase_eui_numbers(void)
-{
-	uint8_t val;
-	esp_err_t err;
-	if((err=nvs_get_u8(nvs_deveui,n_of_eui_key,&val))!=ESP_OK)
-	{
-		ESP_LOGE(TAG,"Error reading %s from nvs_deveui err=%s",n_of_eui_key,esp_err_to_name(err));
-	}
-	val++;
-	if((err=nvs_set_u8(nvs_deveui,n_of_eui_key,val))!=ESP_OK)
-	{
-		ESP_LOGE(TAG,"Error writing %s to nvs_deveui err=%s",n_of_eui_key,esp_err_to_name(err));
-	}
-	return val;
-}*/
-
-/*esp_err_t erase_EEPROM_Data(void)
-{
-	esp_err_t err;
-	uint8_t val;
-	if((err=nvs_flash_erase_partition(deveui_partition))!=ESP_OK)
-	{
-		ESP_LOGE(TAG,"Error erasing partition %s err=%s",deveui_partition,esp_err_to_name(err));
-		return err;
-	}
-	if((err=nvs_flash_init_partition(deveui_partition))!=ESP_OK)
-	{
-		ESP_LOGE(TAG,"Error initializing partition %s err=%s",deveui_partition,esp_err_to_name(err));
-		return err;
-	}
-	if((err=nvs_open_from_partition(deveui_partition, deveui_namespace, NVS_READWRITE, &nvs_deveui))!=ESP_OK)
-    {
-		ESP_LOGE(TAG,"nvs_open partition %s namespace %s err=%s",deveui_partition, deveui_namespace,esp_err_to_name(err));
-    	return err;
-    }
-	val=0;
-	if((err=nvs_set_u8(nvs_deveui,n_of_eui_key,val))!=ESP_OK)
-	{
-		ESP_LOGE(TAG,"Error writing %s to nvs_deveui err=%s",n_of_eui_key,esp_err_to_name(err));
-		return err;
-	}
-	return Commit_deveui();
-}*/
-
-
-/*esp_err_t put_Keys(uint8_t n, uint8_t* NwkKey, uint8_t* AppKey)
-{
-    char nwkkeyName[16];
-    char appkeyName[16];
-	esp_err_t err;
-	sprintf(nwkkeyName,"NWKKEY%03d",n);
-	if((err=nvs_set_blob(nvs_deveui,nwkkeyName,NwkKey,16))!=ESP_OK)
-	{
-		ESP_LOGE(TAG,"Error writing NwkKey number %d key %s from nvs_deveui err=%s",n,nwkkeyName,esp_err_to_name(err));
-	}
-	sprintf(appkeyName,"APPKEY%03d",n);
-	if((err=nvs_set_blob(nvs_deveui,appkeyName,AppKey,16))!=ESP_OK)
-	{
-		ESP_LOGE(TAG,"Error writing AppKey number %d key %s from nvs_deveui err=%s",n,appkeyName,esp_err_to_name(err));
-	}
-	return err;
-}*/
-
-
-/*esp_err_t get_Keys(uint8_t n, uint8_t* NwkKey, uint8_t* AppKey)
-{
-    char nwkkeyName[16];
-    char appkeyName[16];
-    size_t len=16;
-	esp_err_t err;
-	sprintf(nwkkeyName,"NWKKEY%03d",n);
-	if((err=nvs_get_blob(nvs_deveui,nwkkeyName,NwkKey,&len))!=ESP_OK)
-	{
-		ESP_LOGE(TAG,"Error reading NwkKey number %d key %s from nvs_deveui err=%s",n,nwkkeyName,esp_err_to_name(err));
-	}
-	sprintf(appkeyName,"APPKEY%03d",n);
-	if((err=nvs_get_blob(nvs_deveui,appkeyName,AppKey,&len))!=ESP_OK)
-	{
-		ESP_LOGE(TAG,"Error reading AppKey number %d key %s from nvs_deveui err=%s",n,appkeyName,esp_err_to_name(err));
-	}
-	return err;
-}*/
-
-
-
-/*esp_err_t Commit_deveui(void)
-{
-	esp_err_t err;
-	if((err=nvs_commit(nvs_deveui))!=ESP_OK) ESP_LOGE(TAG, "Error while commit nvs_deveui err=%s",esp_err_to_name(err));
-	return err;
-}*/
 
 
 void print_SHAKey(void)
@@ -658,6 +528,22 @@ void deleteDevice(uint8_t j0)
 	sprintf(uname,"Dev%dName",j0);
 	nvs_erase_key(nvs,uname);
 	Commit_params();
+}
+
+esp_err_t eraseAllKeys(void)
+{
+	esp_err_t err;
+	if((err=nvs_erase_all(nvs))!=ESP_OK)
+	{
+		ESP_LOGE(TAG, "Error while erasing all keys from nvs err=%s",esp_err_to_name(err));
+		return err;
+	}
+	if((err=nvs_set_u8(nvs,"params",0))!=ESP_OK)
+	{
+		ESP_LOGE(TAG, "Error while writing \"params\" to nvs err=%s",esp_err_to_name(err));
+		return err;
+	}
+	return ESP_OK;
 }
 
 

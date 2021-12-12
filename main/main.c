@@ -787,9 +787,8 @@ static void system_init()
     uint32_t e15_1=esp_efuse_read_reg(0,3);
     ESP_LOGI(TAG,"apb31=%d e20=%d e20_1=%d e15=%d e15_1=%d",(*apb31&0x80000000)>>31,(*e20&0x00100000)>>20,(e20_1&0x00100000)>>20,(*e15&0x00008000)>>15,(e15_1&0x00008000)>>15);
     if((err = nvs_flash_init())!=ESP_OK) ESP_LOGE("main.c","Error while init default nvs err=%s\n",esp_err_to_name(err));
-//    erase_EEPROM_Data();
     Sync_EEPROM();
-//    uint8_t x=selectJoinServer((void*)&JoinServer);
+    //    uint8_t x=selectJoinServer((void*)&JoinServer);
     ESP_LOGI(TAG,"After Sync EEPROM FREE=%d",xPortGetFreeHeapSize());
     fill_devices1();
     ESP_LOGI(TAG,"After fill devices FREE=%d",xPortGetFreeHeapSize());

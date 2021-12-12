@@ -18,6 +18,7 @@
 #include "esp_log.h"
 #include "cmd_nvs.h"
 #include "driver/uart.h"
+#include "esp_system.h"
 
 #include "sys/unistd.h"
 #include "shell.h"
@@ -579,11 +580,14 @@ uint8_t set_raw_par(const char* par, const void* par_value)
     {
         if(parcmp(__pars->c,par,0))
         {
-/*            if(!strcmp(__pars->c,"Erase_EEPROM"))
+            if(!strcmp(__pars->c,"Erase_EEPROM"))
             {
-                if(erase_EEPROM_Data()!=ESP_OK) return 1;
+            	if(*((uint8_t*)par_value)==0) return 0;
+		        if((err=Write_u8_params("params",0))!=ESP_OK) return err;
+                if((err=Commit_params())!=ESP_OK) return err;
+                esp_restart();
                 return 0;
-            }*/
+            }
             if(__pars->type==PAR_UI32)
             {
                 if((err=Write_u32_params(__pars->c, *((uint32_t*)par_value)))!=ESP_OK) return err;
@@ -631,11 +635,16 @@ uint8_t set_par(console_type con, const char* par, const char* val_buf)
     {
         if(parcmp(__pars->c,par,0))
         {
-/*            if(!strcmp(__pars->c,"Erase_EEPROM"))
+            if(!strcmp(__pars->c,"Erase_EEPROM"))
             {
-                if(erase_EEPROM_Data()!=ESP_OK) return 1;
+                if (stringToUInt8(val_buf, &tmp8)) return 1;
+            	if( tmp8!=1 && tmp8!=2 ) return 0;
+		        if( tmp8==1 && (err=Write_u8_params("params",0))!=ESP_OK) return err;
+		        if( tmp8==2 && (err=eraseAllKeys())!=ESP_OK) return err;
+                if((err=Commit_params())!=ESP_OK) return err;
+                esp_restart();
                 return 0;
-            }*/
+            }
             if(__pars->type==PAR_UI32)
             {
                 if (stringToUInt32(val_buf, &tmp32)) return 1;

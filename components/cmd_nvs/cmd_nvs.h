@@ -118,7 +118,7 @@ esp_err_t get_SHAKey(void);
 void print_SHAKey(void);
 void deleteAccount(uint8_t j0);
 void deleteDevice(uint8_t j0);
-
+esp_err_t eraseAllKeys(void);
 
 
 #ifdef __cplusplus
