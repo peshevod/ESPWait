@@ -257,6 +257,13 @@ esp_err_t Sync_EEPROM(void)
 esp_err_t Write_u32_params(const char* key, uint32_t val)
 {
 	esp_err_t err;
+	uint32_t tmp32;
+	if((err=nvs_get_u32(nvs,key,&tmp32))!=ESP_OK && err!=ESP_ERR_NVS_NOT_FOUND)
+	{
+		ESP_LOGE(TAG, "Error reading %s from nvs err=%s", key, esp_err_to_name(err));
+		return err;
+	}
+	if(err==ESP_OK && tmp32==val) return ESP_OK;
 	if((err=nvs_set_u32(nvs,key,val))!=ESP_OK) ESP_LOGE(TAG, "Error writing u32 value to nvs err=%s",esp_err_to_name(err));
 	return err;
 }
@@ -272,6 +279,13 @@ esp_err_t Read_u32_params(const char* key, uint32_t* val)
 esp_err_t Write_u8_params(const char* key, uint8_t val)
 {
 	esp_err_t err;
+	uint8_t tmp8;
+	if((err=nvs_get_u8(nvs,key,&tmp8))!=ESP_OK  && err!=ESP_ERR_NVS_NOT_FOUND)
+	{
+		ESP_LOGE(TAG, "Error reading %s from nvs err=%s", key, esp_err_to_name(err));
+		return err;
+	}
+	if(err==ESP_OK && tmp8==val) return ESP_OK;
 	if((err=nvs_set_u8(nvs,key,val))!=ESP_OK) ESP_LOGE(TAG, "Error writing u8 value to nvs err=%s",esp_err_to_name(err));
 	return err;
 }
@@ -287,6 +301,13 @@ esp_err_t Read_u8_params(const char* key, uint8_t* val)
 esp_err_t Write_i32_params(const char* key, int32_t val)
 {
 	esp_err_t err;
+	int32_t tmp32;
+	if((err=nvs_get_i32(nvs,key,&tmp32))!=ESP_OK  && err!=ESP_ERR_NVS_NOT_FOUND)
+	{
+		ESP_LOGE(TAG, "Error reading %s from nvs err=%s", key, esp_err_to_name(err));
+		return err;
+	}
+	if(err==ESP_OK && tmp32==val) return ESP_OK;
 	if((err=nvs_set_i32(nvs,key,val))!=ESP_OK) ESP_LOGE(TAG, "Error writing i32 value to nvs err=%s",esp_err_to_name(err));
 	return err;
 }
@@ -302,6 +323,22 @@ esp_err_t Read_i32_params(const char* key, int32_t* val)
 esp_err_t Write_key_params(const char* key, uint8_t* appkey)
 {
 	esp_err_t err;
+	uint8_t tmp[16];
+	size_t len;
+	if((err=nvs_get_blob(nvs,key,NULL,&len))!=ESP_OK  && err!=ESP_ERR_NVS_NOT_FOUND)
+	{
+		ESP_LOGE(TAG, "Error reading length of %s from nvs err=%s", key, esp_err_to_name(err));
+		return err;
+	}
+	if(err==ESP_OK)
+	{
+		if((err=nvs_get_blob(nvs,key,tmp,&len))!=ESP_OK)
+		{
+			ESP_LOGE(TAG, "Error reading %s from nvs err=%s", key, esp_err_to_name(err));
+			return err;
+		}
+		if(!memcmp(appkey,tmp,16)) return ESP_OK;
+	}
 	if((err=nvs_set_blob(nvs,key,appkey,16))!=ESP_OK) ESP_LOGE(TAG, "Error writing appkey value to nvs err=%s",esp_err_to_name(err));
 	return err;
 }
@@ -318,6 +355,13 @@ esp_err_t Read_key_params(const char* key, uint8_t* appkey)
 esp_err_t Write_eui_params(const char* key, uint8_t* eui)
 {
 	esp_err_t err;
+	uint64_t tmp64;
+	if((err=nvs_get_u64(nvs,key,&tmp64))!=ESP_OK  && err!=ESP_ERR_NVS_NOT_FOUND)
+	{
+		ESP_LOGE(TAG, "Error reading %s from nvs err=%s", key, esp_err_to_name(err));
+		return err;
+	}
+	if(err==ESP_OK && tmp64==*((uint64_t*)eui)) return ESP_OK;
 	if((err=nvs_set_u64(nvs,key,*((uint64_t*)eui)))!=ESP_OK) ESP_LOGE(TAG, "Error writing eui value to nvs err=%s",esp_err_to_name(err));
 	return err;
 }
