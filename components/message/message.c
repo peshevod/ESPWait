@@ -44,6 +44,7 @@ char* access_token;
 char* user;
 char* messageTitle;
 char* messageBody;
+uint8_t message_sent;
 
 void prepareKey(const char* key)
 {
@@ -768,25 +769,28 @@ exit:
 	if(content!=NULL) free(content);
 	if(request!=NULL) free(request);
     ESP_LOGI(TAG,"exit from sendMessageTask FREE=%d",xPortGetFreeHeapSize());
-	while(1)
+/*	while(1)
 	{
 		vTaskDelay(86400000);
-	}
-    for (int countdown = 10; countdown >= 0; countdown--) {
+	}*/
+    /*for (int countdown = 10; countdown >= 0; countdown--) {
         ESP_LOGI(TAG, "%d...", countdown);
         vTaskDelay(1000 / portTICK_PERIOD_MS);
-    }
+    }*/
     vTaskDelete(NULL);
 }
 
 
-void sendMessage(char* user0, char* messageTitle0, char* messageBody0)
+void sendMessage(char* user0, char* messageTitle0, char* messageBody0, char* messageBody1)
 {
 	user=user0;
+	char messageBody[128];
 	messageTitle=messageTitle0;
-	messageBody=messageBody0;
+	strcpy(messageBody,messageBody0);
+	if(messageBody0[0] && messageBody1[0]) strcat(messageBody," and ");
+	strcat(messageBody,messageBody1);
 	TaskHandle_t xHandle = NULL;
 	xTaskCreatePinnedToCore(&sendMessageTask, "https_post_request task", 8192, NULL, 5, &xHandle,0);
-	return NULL;
-
+	while(xHandle!=NULL && eTaskGetState(xHandle)==eRunning) vTaskDelay(100);
+	return;
 }

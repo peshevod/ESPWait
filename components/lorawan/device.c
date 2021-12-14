@@ -114,13 +114,13 @@ uint8_t euicmpr(GenericEui_t* eui1, GenericEui_t* eui2)
     return js;
 }*/
 
-
 void fill_devices1(void)
 {
 	EndDevice_t* dev;
 	GenericEui_t eui;
 	esp_err_t err;
 	char uname[16];
+
 	for(uint8_t i=0;i<MAX_NUMBER_OF_DEVICES;i++)
 	{
 		dev=endDevices[i];
@@ -158,6 +158,8 @@ void fill_devices1(void)
 				Read_u8_params(uname,&dev->version);
 				sprintf(uname,"Dev%dName",i+1);
 				Read_str_params(uname,dev->Name,PAR_STR_MAX_SIZE);
+				sprintf(uname,"Dev%dUsers",i+1);
+				Read_eui_params(uname,dev->users);
 				dev->devNonce=0;
 				put_DevNonce(i,0);
 			}

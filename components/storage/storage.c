@@ -9,6 +9,9 @@
 #include "lorawan_types.h"
 #include "esp_log.h"
 #include "esp_err.h"
+#include "message.h"
+#include "crypto.h"
+#include "cmd_nvs.h"
 
 static const char *TAG = "storage";
 sdmmc_card_t* card;
@@ -67,6 +70,9 @@ void writeData(void* pvParams)
 {
 	NetworkSession_t* networkSession=(NetworkSession_t*)pvParams;
 	char filename[64];
+    char uname[16];
+    char devUser[CRYPTO_USERNAME_MAX+1];
+    char sensor1_message[64],sensor2_message[64];
 
 	for(uint8_t i=0;i<networkSession->payloadLength;i++) printf("0x%02X ",(networkSession->payload)[i]);
     printf("\n");
@@ -100,6 +106,30 @@ void writeData(void* pvParams)
 	}
 	else ESP_LOGE(TAG, "Failed to open file %s for writing",filename);
 	if(f!=NULL) fclose(f);
+	sensor1_message[0]=0;
+	sensor2_message[0]=0;
+	if(data->sensors.sensor1_mode&SENSOR_MODE_ENABLE && data->sensors.sensor1_mode&SENSOR_MODE_TRIGGER && ( (data->sensors.sensor1_cur && data->sensors.sensor1_mode&SENSOR_MODE_TRIGGER) || (!data->sensors.sensor1_cur && !(data->sensors.sensor1_mode&SENSOR_MODE_TRIGGER)) ))
+	{
+		sprintf(sensor1_message,"Alarm from Sensor1 of device %s, events=%d",networkSession->endDevice->Name,data->sensors.sensor1_evt);
+	}
+	if(data->sensors.sensor2_mode&SENSOR_MODE_ENABLE && data->sensors.sensor2_mode&SENSOR_MODE_TRIGGER && ( (data->sensors.sensor2_cur && data->sensors.sensor2_mode&SENSOR_MODE_TRIGGER) || (!data->sensors.sensor2_cur && !(data->sensors.sensor2_mode&SENSOR_MODE_TRIGGER)) ))
+	{
+		sprintf(sensor2_message,"Alarm from Sensor2 of device %s, events=%d",networkSession->endDevice->Name,data->sensors.sensor2_evt);
+	}
+	if(sensor1_message[0] || sensor2_message[0])
+	{
+		for(uint8_t k=0;k<8;k++)
+		{
+			if(networkSession->endDevice->users[k])
+			{
+				sprintf(uname,"USR%d",networkSession->endDevice->users[k]);
+				if(Read_str_params(uname, devUser, PAR_STR_MAX_SIZE)==ESP_OK)
+				{
+					sendMessage(devUser,"Alarm from ESPWait!",sensor1_message,sensor2_message);
+				}
+			}
+		}
+	}
     vTaskDelete(NULL);
 }
 

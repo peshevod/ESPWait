@@ -561,6 +561,7 @@ typedef struct
 //	uint8_t number_in_flash;
 	uint8_t version;
 	char Name[16];
+	uint8_t users[8];
 	DeviceAddress_t devAddr;
 } EndDevice_t;
 

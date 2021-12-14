@@ -10,6 +10,11 @@ extern "C" {
 
 
 #define MOUNT_POINT "/sdcard"
+#define SENSOR_MODE_ENABLE	0x01
+#define SENSOR_MODE_TRIGGER	0x02
+#define SENSOR_MODE_INV		0x04
+
+
 
 #pragma pack(push,1)
 typedef union
