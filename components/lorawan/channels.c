@@ -66,14 +66,14 @@ LorawanError_t ValidateFrequency (uint32_t frequencyNew)
     {
         if ( (frequencyNew > FREQ_870000KHZ) || (frequencyNew < FREQ_863000KHZ) )
         {
-            result = INVALID_PARAMETER ;
+            result = LORA_INVALID_PARAMETER ;
         }
     }
     else
     {
         if ( (frequencyNew > FREQ_434790KHZ) || (frequencyNew < FREQ_433050KHZ) )
         {
-            result = INVALID_PARAMETER ;
+            result = LORA_INVALID_PARAMETER ;
         }
     }
 
@@ -90,7 +90,7 @@ LorawanError_t ValidateDataRange (uint8_t dataRangeNew)
 
     if ( (ValidateDataRate (dataRateMax) != LORA_OK) || (ValidateDataRate (dataRateMin) != LORA_OK ) || (dataRateMax < dataRateMin) )
     {
-        result = INVALID_PARAMETER;
+        result = LORA_INVALID_PARAMETER;
     }
     return result;
 }
@@ -105,7 +105,7 @@ LorawanError_t ValidateChannelMask (uint16_t channelMask)
         {
             if ( ( (channelMask & BIT0) == BIT0) && ( (Channels[i].parametersDefined & (FREQUENCY_DEFINED | DATA_RANGE_DEFINED | DUTY_CYCLE_DEFINED) ) != (FREQUENCY_DEFINED | DATA_RANGE_DEFINED | DUTY_CYCLE_DEFINED) ) )  // if the channel mask sent enables a yet undefined channel, the command is discarded and the device state is not changed
             {
-                return INVALID_PARAMETER;
+                return LORA_INVALID_PARAMETER;
             }
             else
             {
@@ -118,7 +118,7 @@ LorawanError_t ValidateChannelMask (uint16_t channelMask)
    else
    {
        //ChMask set to 0x0000 in ADR may be used as a DoS attack so receiving this results in an error
-       return INVALID_PARAMETER;
+       return LORA_INVALID_PARAMETER;
    }
 }
 
@@ -128,7 +128,7 @@ LorawanError_t ValidateChannelMaskCntl (uint8_t channelMaskCntl)
 
    if ( (channelMaskCntl != 0) && (channelMaskCntl != 6) )
    {
-       result = INVALID_PARAMETER;
+       result = LORA_INVALID_PARAMETER;
    }
 
   return result;
@@ -140,7 +140,7 @@ LorawanError_t ValidateChannelId (uint8_t channelId, bool allowedForDefaultChann
 
     if ( (channelId >= MAX_RU_SINGLE_BAND_CHANNELS) ||  ( (allowedForDefaultChannels == WITHOUT_DEFAULT_CHANNELS) && (channelId < 3) ) )
     {
-        result = INVALID_PARAMETER ;
+        result = LORA_INVALID_PARAMETER ;
     }
 
     return result;
@@ -189,7 +189,7 @@ LorawanError_t LORAWAN_SetChannelIdStatus (uint8_t channelId, bool statusNew)
 
     if (ValidateChannelId (channelId, ALL_CHANNELS) != LORA_OK)
     {
-        result = INVALID_PARAMETER;
+        result = LORA_INVALID_PARAMETER;
     }
 
     else
@@ -200,7 +200,7 @@ LorawanError_t LORAWAN_SetChannelIdStatus (uint8_t channelId, bool statusNew)
         }
         else
         {
-            result = INVALID_PARAMETER;
+            result = LORA_INVALID_PARAMETER;
         }
     }
 

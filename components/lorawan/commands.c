@@ -74,7 +74,7 @@ LorawanError_t ValidateDataRate (uint8_t dataRate)
 
     if ( dataRate > DR7 )
     {
-        result = INVALID_PARAMETER;
+        result = LORA_INVALID_PARAMETER;
     }
 
     return result;
@@ -86,11 +86,11 @@ LorawanError_t ValidateTxPower (uint8_t txPowerNew)
 
     if ((ISM_EU868 == loRa.ismBand) && ((TXPOWER_MIN == txPowerNew) || (txPowerNew > TXPOWER_MAX)))
     {
-        result = INVALID_PARAMETER;
+        result = LORA_INVALID_PARAMETER;
     }
     else if((ISM_RU864 == loRa.ismBand) && ((TXPOWERRU864_MIN == txPowerNew) || (txPowerNew > TXPOWERRU864_MAX)))
     {
-        result = INVALID_PARAMETER;
+        result = LORA_INVALID_PARAMETER;
     }
     return result;
 }
@@ -111,7 +111,7 @@ static LorawanError_t ValidateRxOffset (uint8_t rxOffset)
 
     if (rxOffset > 5)
     {
-        result = INVALID_PARAMETER;
+        result = LORA_INVALID_PARAMETER;
     }
 
     return result;

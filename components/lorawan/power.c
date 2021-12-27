@@ -15,11 +15,11 @@ static LorawanError_t ValidateTxPower (uint8_t txPowerNew)
 
     if ((ISM_EU868 == loRa.ismBand) && ((TXPOWER_MIN == txPowerNew) || (txPowerNew > TXPOWER_MAX)))
     {
-        result = INVALID_PARAMETER;
+        result = LORA_INVALID_PARAMETER;
     }
     else if((ISM_RU864 == loRa.ismBand) && ((TXPOWERRU864_MIN == txPowerNew) || (txPowerNew > TXPOWERRU864_MAX)))
     {
-        result = INVALID_PARAMETER;
+        result = LORA_INVALID_PARAMETER;
     }
     return result;
 }
@@ -53,7 +53,7 @@ LorawanError_t LORAX_SetTxPower (uint8_t txPowerNew)
     }
     else
     {
-        result = INVALID_PARAMETER;
+        result = LORA_INVALID_PARAMETER;
     }
     return result;
 }
