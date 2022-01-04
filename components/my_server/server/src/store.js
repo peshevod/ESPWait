@@ -7,7 +7,7 @@ export default new Vuex.Store({
   state: {
     logged_in: false,
     jwt_token: null,
-    server: 'http://192.168.1.25'
+    server: 'http://localhost'
   },
   mutations: {
     login() { this.state.logged_in=true; },
