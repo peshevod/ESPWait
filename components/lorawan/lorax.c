@@ -551,7 +551,7 @@ LorawanError_t LORAX_RxDone (uint8_t* buffer, uint8_t bufferLength, int16_t rssi
             }
             else
             {
-                return INVALID_PARAMETER;
+                return LORA_INVALID_PARAMETER;
             }
         }
         if (networkSession->FCntUp.value == UINT32_MAX)
@@ -570,7 +570,7 @@ LorawanError_t LORAX_RxDone (uint8_t* buffer, uint8_t bufferLength, int16_t rssi
         if (computedMic != extractedMic)
         {
             ESP_LOGE(TAG,"BAD MIC");
-            return INVALID_PARAMETER;
+            return LORA_INVALID_PARAMETER;
         }
         ESP_LOGI(TAG,"MIC OK");
 

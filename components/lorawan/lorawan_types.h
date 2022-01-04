@@ -90,7 +90,7 @@ typedef enum
     LORA_OK                                       = 0,
     NETWORK_NOT_JOINED                          ,
     MAC_STATE_NOT_READY_FOR_TRANSMISSION        ,
-    INVALID_PARAMETER                           ,
+    LORA_INVALID_PARAMETER                           ,
     KEYS_NOT_INITIALIZED                        ,
     SILENT_IMMEDIATELY_ACTIVE                   ,
     FRAME_COUNTER_ERROR_REJOIN_NEEDED           ,
