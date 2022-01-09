@@ -2,6 +2,7 @@
 #include <time.h>
 #include <stdlib.h>
 #include "crypto.h"
+#include "users.h"
 #include "wolfssl/wolfcrypt/coding.h"
 #include "wolfssl/wolfcrypt/pwdbased.h"
 #include "wolfssl/wolfcrypt/random.h"
@@ -267,10 +268,10 @@ esp_err_t verifyToken(char* token, char* username, char* role)
 		return ESP_FAIL;
 	}
 	cJSON *sub = cJSON_GetObjectItemCaseSensitive(json,"sub");
-	if(sub!=NULL && cJSON_IsString(sub) && sub->valuestring!=NULL) strncpy(username,sub->valuestring,CRYPTO_USERNAME_MAX);
+	if(sub!=NULL && cJSON_IsString(sub) && sub->valuestring!=NULL) strncpy(username,sub->valuestring,USERNAME_MAX);
 	else *username=0;
 	cJSON *rol = cJSON_GetObjectItemCaseSensitive(json,"rol");
-	if(rol!=NULL && cJSON_IsString(rol) && rol->valuestring!=NULL) strncpy(role,rol->valuestring,CRYPTO_ROLE_MAX);
+	if(rol!=NULL && cJSON_IsString(rol) && rol->valuestring!=NULL) strncpy(role,rol->valuestring,ROLENAME_MAX);
 	else *role=0;
 	cJSON_Delete(json);
 	*s2='.';

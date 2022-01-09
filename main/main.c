@@ -815,8 +815,8 @@ static void system_init()
 	}
     ESP_LOGI(TAG,"After wifi FREE=%d",xPortGetFreeHeapSize());
     set_global_sec();
-//   	char user[CRYPTO_USERNAME_MAX+1];
-//   	char role[CRYPTO_ROLE_MAX+1];
+//   	char user[USERNAME_MAX];
+//   	char role[ROLENAME_MAX];
 //    makeToken(token, sizeof(token), "ilya", 3600, "user");
 //   	if(verifyToken(token,user,role)==ESP_OK) ESP_LOGI(TAG,"Token verified user=%s role=%s",user,role);
     ESP_LOGI(TAG,"before start server FREE=%d",xPortGetFreeHeapSize());

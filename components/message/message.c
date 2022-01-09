@@ -6,6 +6,7 @@
 #include <netdb.h>
 #include "message.h"
 #include "crypto.h"
+#include "users.h"
 #include "cJSON.h"
 #include "wolfssl/wolfcrypt/coding.h"
 #include "wolfssl/wolfcrypt/random.h"
@@ -626,7 +627,7 @@ static void sendMessageTask(void)
     char* request=NULL;
 //	getAccessToken(NULL,0);
 //	goto exit;
-    char uname[CRYPTO_USERNAME_MAX+7];
+    char uname[USERNAME_MAX+7];
     int csz=2048,hsz=2048;
     int content_len;
     int ret;

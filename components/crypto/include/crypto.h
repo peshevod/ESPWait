@@ -9,8 +9,6 @@ extern "C" {
 #define CRYPTO_KEY_LENGTH	32
 #define CRYPTO_MAX_PAYLOAD 256
 #define CRYPTO_MAX_HEADER 128
-#define CRYPTO_USERNAME_MAX 16
-#define CRYPTO_ROLE_MAX 16
 
 #include "esp_err.h"
 

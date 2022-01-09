@@ -20,7 +20,6 @@ extern "C" {
 
 #define BUF_LEN 1024
 #define RING_BUF_LEN 1024
-#define MAX_USERS 8
 
 
 #define send_prompt()   {if(send_chars(con, (char*)prompt)!=0) { stop_console[con]=1;return -1;}}

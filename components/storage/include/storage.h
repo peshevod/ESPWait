@@ -66,7 +66,7 @@ typedef struct
 
 bool init_sdmmc(void);
 void writeData(void* pvParams);
-esp_err_t getJsonData(void* pvParams,char* out, int max_length);
+esp_err_t getJsonData(char* user, char* role, void* pvParams,char* out, int max_length);
 
 #ifdef __cplusplus
 }

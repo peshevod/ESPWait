@@ -10,6 +10,7 @@
 #include "wolfssl/wolfcrypt/coding.h"
 #include "wolfssl/internal.h"
 #include "crypto.h"
+#include "users.h"
 #include "my_server.h"
 #include "shell.h"
 #include "esp_httpd_priv.h"
@@ -26,7 +27,6 @@
 
 #define LOG_LOCAL_LEVEL ESP_LOG_VERBOSE
 #include "esp_log.h"
-
 
 static const char *TAG = "my_server";
 static char buffer1[MY_SERVER_AUTHORIZATION_MAX+1];
@@ -250,14 +250,14 @@ static esp_err_t login_get_handler(httpd_req_t *req)
     char auth[MY_SERVER_AUTHORIZATION_MAX+1];
     char x[160];
     char errr_str[64];
-    char user[CRYPTO_USERNAME_MAX+1];
-    char role[CRYPTO_ROLE_MAX+1];
+    char user[USERNAME_MAX];
+    char role[ROLENAME_MAX];
     char* basic;
     char* y;
-    char username[CRYPTO_USERNAME_MAX+1];
-    char password[CRYPTO_USERNAME_MAX+1];
-    char firstName[CRYPTO_USERNAME_MAX+1];
-    char lastName[CRYPTO_USERNAME_MAX+1];
+    char username[USERNAME_MAX];
+    char password[USERNAME_MAX];
+    char firstName[USERNAME_MAX];
+    char lastName[USERNAME_MAX];
     char uname[16];
     int n;
     uint8_t j;
@@ -314,11 +314,11 @@ static esp_err_t login_get_handler(httpd_req_t *req)
 							if(j!=0)
 							{
 								sprintf(uname,"USR%d",j);
-								if(Read_str_params(uname,username, CRYPTO_USERNAME_MAX)!=ESP_OK) continue;
+								if(Read_str_params(uname,username, USERNAME_MAX)!=ESP_OK) continue;
 							}
 							else strcpy(username,"admin");
 							sprintf(uname,"PWD%d",j);
-							if(Read_str_params(uname,password,CRYPTO_USERNAME_MAX)!=ESP_OK) continue;
+							if(Read_str_params(uname,password,USERNAME_MAX)!=ESP_OK) continue;
 							if(!strcmp(x,username) && !strcmp(y,password))
 							{
 								httpd_resp_set_type(req, "application/json");
@@ -332,11 +332,11 @@ static esp_err_t login_get_handler(httpd_req_t *req)
 							    {
 							    	strcat(buffer1,",\"welcome\":\" ");
 									sprintf(uname,"FirstName%d",j);
-									if(Read_str_params(uname,firstName, CRYPTO_USERNAME_MAX)!=ESP_OK) continue;
+									if(Read_str_params(uname,firstName, USERNAME_MAX)!=ESP_OK) continue;
 									strcat(buffer1,firstName);
 									strcat(buffer1," ");
 									sprintf(uname,"LastName%d",j);
-									if(Read_str_params(uname,lastName, CRYPTO_USERNAME_MAX)!=ESP_OK) continue;
+									if(Read_str_params(uname,lastName, USERNAME_MAX)!=ESP_OK) continue;
 									strcat(buffer1,lastName);
 									strcat(buffer1,"!\"");
 							    }
@@ -418,8 +418,8 @@ static esp_err_t options_handler(httpd_req_t *req)
 
 static esp_err_t settings_get_handler(httpd_req_t *req)
 {
-    char user[CRYPTO_USERNAME_MAX+1];
-    char role[CRYPTO_ROLE_MAX+1];
+    char user[USERNAME_MAX];
+    char role[ROLENAME_MAX];
     uint8_t join_eui[8];
     char join[2048];
     uint8_t tmp8;
@@ -505,8 +505,8 @@ static esp_err_t settings_get_handler(httpd_req_t *req)
 
 static esp_err_t accounts_get_handler(httpd_req_t *req)
 {
-    char user[CRYPTO_USERNAME_MAX+1];
-    char role[CRYPTO_ROLE_MAX+1];
+    char user[USERNAME_MAX];
+    char role[ROLENAME_MAX];
     char join[2048];
     char parstr[128];
     char firstName[PAR_STR_MAX_SIZE];
@@ -527,11 +527,11 @@ static esp_err_t accounts_get_handler(httpd_req_t *req)
     for(uint8_t j=1;j<MAX_USERS;j++)
     {
 		sprintf(uname,"USR%d",j);
-		if(Read_str_params(uname,user, CRYPTO_USERNAME_MAX)!=ESP_OK) continue;
+		if(Read_str_params(uname,user, USERNAME_MAX)!=ESP_OK) continue;
 		sprintf(uname,"FirstName%d",j);
-		if(Read_str_params(uname,firstName, CRYPTO_USERNAME_MAX)!=ESP_OK) firstName[0]=0;
+		if(Read_str_params(uname,firstName, USERNAME_MAX)!=ESP_OK) firstName[0]=0;
 		sprintf(uname,"LastName%d",j);
-		if(Read_str_params(uname,lastName, CRYPTO_USERNAME_MAX)!=ESP_OK) lastName[0]=0;
+		if(Read_str_params(uname,lastName, USERNAME_MAX)!=ESP_OK) lastName[0]=0;
 		sprintf(parstr,"{\"Username\":\"%s\",\"FirstName\":\"%s\",\"LastName\":\"%s\"},",user,firstName,lastName);
 		strcat(join,parstr);
     }
@@ -545,14 +545,14 @@ static esp_err_t accounts_get_handler(httpd_req_t *req)
 
 static esp_err_t devices_get_handler(httpd_req_t *req)
 {
-    char user[CRYPTO_USERNAME_MAX+1];
-    char devUser[CRYPTO_USERNAME_MAX+1];
-    char role[CRYPTO_ROLE_MAX+1];
+    char user[USERNAME_MAX];
+    char devUser[USERNAME_MAX];
+	uint8_t users[MAX_USERS];
+    char role[ROLENAME_MAX];
     char join[2048];
     char parstr[128];
     char devName[PAR_STR_MAX_SIZE];
     uint8_t eui[8];
-    uint8_t users[8];
     uint8_t AppKey[16];
     uint8_t NwkKey[16];
     uint8_t version;
@@ -569,8 +569,12 @@ static esp_err_t devices_get_handler(httpd_req_t *req)
     }
 
     strcpy(join,"{\"Devices\":[");
+    uint8_t usernum=get_user_number(user,role);
     for(uint8_t j=1;j<MAX_NUMBER_OF_DEVICES;j++)
     {
+    	sprintf(uname,"Dev%dUsers",j);
+		if(Read_eui_params(uname,users)!=ESP_OK) continue;
+		if(!in_list(usernum,users)) continue;
 		sprintf(uname,"Dev%dEui",j);
 		if(Read_eui_params(uname,eui)!=ESP_OK) continue;
 		sprintf(uname,"Dev%dAppKey",j);
@@ -581,14 +585,12 @@ static esp_err_t devices_get_handler(httpd_req_t *req)
 		if(Read_str_params(uname,devName, PAR_STR_MAX_SIZE)!=ESP_OK) devName[0]=0;
 		sprintf(uname,"Dev%dVersion",j);
 		if(Read_u8_params(uname,&version)!=ESP_OK) version=0;
-		sprintf(uname,"Dev%dUsers",j);
-		if(Read_eui_params(uname,users)!=ESP_OK) continue;
 		sprintf(parstr,"{\"DevName\":\"%s\",\"DevEUI\":\"",devName);
 		strcat(join,parstr);
 		l=strlen(join);
 		for(uint8_t i=0;i<8;i++,l+=2) sprintf(&join[l],"%02X",eui[i]);
 		join[l]=0;
-		if(!strcmp(role,"admin"))
+		if(!usernum)
 		{
 			sprintf(parstr,"\",\"AppKey\":\"");
 			strcat(join,parstr);
@@ -632,10 +634,10 @@ static esp_err_t devices_get_handler(httpd_req_t *req)
 
 static esp_err_t monitor_post_handler(httpd_req_t *req)
 {
-    char user[CRYPTO_USERNAME_MAX+1];
-    char role[CRYPTO_ROLE_MAX+1];
+    char user[USERNAME_MAX];
+    char role[ROLENAME_MAX];
     esp_err_t err=ESP_OK;
-    char uname[CRYPTO_USERNAME_MAX+7];
+    char uname[USERNAME_MAX+7];
 
     ESP_LOGI(TAG,"POST monitor/* handler");
 	print_headers(req);
@@ -678,8 +680,8 @@ static esp_err_t monitor_post_handler(httpd_req_t *req)
 
 static esp_err_t monitor_get_handler(httpd_req_t *req)
 {
-    char user[CRYPTO_USERNAME_MAX+1];
-    char role[CRYPTO_ROLE_MAX+1];
+    char user[USERNAME_MAX];
+    char role[ROLENAME_MAX];
     char join[2048];
     esp_err_t err=ESP_OK;
     uint8_t chunk;
@@ -714,7 +716,7 @@ static esp_err_t monitor_get_handler(httpd_req_t *req)
     		{
     			if(chunk==0) strcpy(join,"{\"Sessions\":[");
     			else strcpy(join,",");
-    			if((err=getJsonData(networkSessions[j],join, 2048-strlen(join)))==ESP_OK)
+    			if((err=getJsonData(user, role, networkSessions[j],join, 2048-strlen(join)))==ESP_OK)
 				{
     				if((err=httpd_resp_send_chunk(req, join, strlen(join)))==ESP_OK)
 					{
@@ -744,8 +746,8 @@ static esp_err_t monitor_get_handler(httpd_req_t *req)
 
 static esp_err_t settings_post_handler(httpd_req_t *req)
 {
-    char user[CRYPTO_USERNAME_MAX+1];
-    char role[CRYPTO_ROLE_MAX+1];
+    char user[USERNAME_MAX];
+    char role[ROLENAME_MAX];
     char join[2048];
     uint32_t err0;
     uint8_t channel=0, bw=0,sf=0,crc=0,fec=0,pow=0,hm=0;
@@ -848,8 +850,8 @@ static esp_err_t settings_post_handler(httpd_req_t *req)
 
 static esp_err_t accounts_post_handler(httpd_req_t *req)
 {
-    char user[CRYPTO_USERNAME_MAX+1];
-    char role[CRYPTO_ROLE_MAX+1];
+    char user[USERNAME_MAX];
+    char role[ROLENAME_MAX];
     char join[2048];
     char username[PAR_STR_MAX_SIZE];
     char uname[16];
@@ -888,7 +890,7 @@ static esp_err_t accounts_post_handler(httpd_req_t *req)
    				    for(uint8_t j=1;j<MAX_USERS;j++)
    				    {
    						sprintf(uname,"USR%d",j);
-   						if((err0=Read_str_params(uname,user, CRYPTO_USERNAME_MAX))!=ESP_OK)
+   						if((err0=Read_str_params(uname,user, USERNAME_MAX))!=ESP_OK)
    						{
    							if(err0==ESP_ERR_NVS_NOT_FOUND && jfree==0) jfree=j;
    							continue;
@@ -955,8 +957,8 @@ static esp_err_t accounts_post_handler(httpd_req_t *req)
 
 static esp_err_t devices_post_handler(httpd_req_t *req)
 {
-    char user[CRYPTO_USERNAME_MAX+1];
-    char role[CRYPTO_ROLE_MAX+1];
+    char user[USERNAME_MAX];
+    char role[ROLENAME_MAX];
     char join[2048];
 	GenericEui_t eui;
 	GenericEui_t devEui;
@@ -969,7 +971,7 @@ static esp_err_t devices_post_handler(httpd_req_t *req)
     uint8_t j0;
     uint8_t jfree;
     uint8_t version;
-    char devUser[CRYPTO_USERNAME_MAX+1];
+    char devUser[USERNAME_MAX];
     uint8_t users[8];
 
 
@@ -1072,7 +1074,7 @@ static esp_err_t devices_post_handler(httpd_req_t *req)
 										for(uint8_t k=1;k<MAX_USERS;k++)
 										{
 											sprintf(uname,"USR%d",k);
-					   						if( (err0=Read_str_params(uname,devUser, CRYPTO_USERNAME_MAX))==ESP_OK && !strcmp(item->valuestring,devUser) && k1<8 ) users[k1++]=k;
+					   						if( (err0=Read_str_params(uname,devUser, USERNAME_MAX))==ESP_OK && !strcmp(item->valuestring,devUser) && k1<8 ) users[k1++]=k;
 										}
 									}
 								}
