@@ -15,6 +15,7 @@
  
 2. To test and develop
 	- set server in store.js to 'http://192.168.1.25/'
+
         - in my_server.c  uncomment:
  		function start_my_server: esp_err_t ret = httpd_start(&my_server, &config);
 		function stop_my_server: httpd_stop(my_server);
@@ -27,6 +28,16 @@
 	- http://localhost:8080
 
 3. Production
-   npm run build
+	- set server in store.js to ''
 
-   content of dist have to be copied to disk
+	- in my_server.c  uncomment:
+ 		function start_my_server: esp_err_t ret = httpd_ssl_start(&my_server, &config);
+		function stop_my_server: httpd_ssl_stop(my_server);
+
+        - in my_server.c  comment:
+ 		function start_my_server: esp_err_t ret = httpd_start(&my_server, &config);
+		function stop_my_server: httpd_stop(my_server);
+
+
+	- npm run build
+	- copy content of dist to directory server on sdcard

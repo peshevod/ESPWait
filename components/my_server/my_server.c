@@ -1234,8 +1234,8 @@ httpd_handle_t start_my_server(void)
     conf.prvtkey_pem = prvtkey_pem_start;
     conf.prvtkey_len = prvtkey_pem_end - prvtkey_pem_start;
 
-//    esp_err_t ret = httpd_ssl_start(&my_server, &conf);
-    esp_err_t ret = httpd_start(&my_server, &config);
+    esp_err_t ret = httpd_ssl_start(&my_server, &conf);
+//    esp_err_t ret = httpd_start(&my_server, &config);
     if (ESP_OK == ret) {
    // Set URI handlers
 		ESP_LOGI(TAG, "Registering URI handlers");
@@ -1266,8 +1266,8 @@ err_start:
 void stop_my_server(httpd_handle_t my_server)
 {
     // Stop the httpd server
-//	    httpd_ssl_stop(my_server);
-	    httpd_stop(my_server);
+	    httpd_ssl_stop(my_server);
+//	    httpd_stop(my_server);
         free(rest_context);
 }
 
