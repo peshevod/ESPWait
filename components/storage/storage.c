@@ -117,15 +117,13 @@ void writeData(void* pvParams)
 
 	xTimerReset(messageTimer, 0);
 
-	char* token=malloc(1024);
+	/*char* token=malloc(1024);
 	esp_err_t err;
 	if((err=Read_str_params("ilya_token",token, 1024))!=ESP_OK)
 	{
 		ESP_LOGE(TAG,"Error reading user token %s", esp_err_to_name(err));
 	} else ESP_LOGI(TAG,"User token=%s",token);
-    free(token);
-
-
+    free(token);*/
 	vTaskDelete(NULL);
 }
 
