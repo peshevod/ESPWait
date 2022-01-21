@@ -71,7 +71,13 @@ void computeKeys(NetworkSession_t* ns)
 	{
 		memcpy(ns->endDevice->AppKey, ns->endDevice->NwkKey, 16);
 		computeKey10(KEY_AppSKey, ns->endDevice->NwkKey, ns->joinNonce, ns->networkServer->netID, ns->endDevice->devNonce, ns->AppSKey);
+		printf("APPSKey: ");
+		for(uint8_t k=0;k<16;k++) printf(" %02x",ns->AppSKey[k]);
+		printf("\n");
 		computeKey10(KEY_FNwkSIntKey, ns->endDevice->NwkKey, ns->joinNonce, ns->networkServer->netID, ns->endDevice->devNonce, ns->FNwkSIntKey);
+		printf("NWKSKey: ");
+		for(uint8_t k=0;k<16;k++) printf(" %02x",ns->FNwkSIntKey[k]);
+		printf("\n");
 		memcpy(ns->SNwkSIntKey, ns->FNwkSIntKey, 16);
 		memcpy(ns->NwkSEncKey, ns->FNwkSIntKey, 16);
 	}

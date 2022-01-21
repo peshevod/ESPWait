@@ -42,10 +42,13 @@ char* host;
 const char scope[]="https://www.googleapis.com/auth/firebase.messaging";
 word32 SIG_LEN=256;
 char* access_token;
-char* user;
+char user[USERNAME_MAX];
 char* messageTitle;
-char* messageBody;
+char messageBody[128];
 uint8_t message_sent;
+uint8_t message_sending=0;
+uint8_t smt_running=0;
+
 
 void prepareKey(const char* key)
 {
@@ -332,6 +335,8 @@ static char* rawRead(WOLFSSL* ssl, int* content_len)
 	int chunksz_len=0;
 	int start_len=0;
 	char* contl_head;
+	int chunk_len=0;
+
 	do
 	{
 		start=buf;
@@ -352,111 +357,130 @@ static char* rawRead(WOLFSSL* ssl, int* content_len)
 			return data;
 		}
 
+/*		int ij=0;
+		for(int ii=offset;ii<offset+ret;ii++)
+		{
+			printf(" %02x",buf[ii]);
+			if(++ij>=32)
+			{
+				printf("\n");
+				ij=0;
+			}
+		}
+		if(ij!=0) printf("\n");*/
+
 		len = ret+offset;
 		ESP_LOGI(TAG, "%d bytes read", len);
 
 		for (int i = 0; i < len; i++)
 		{
-			if(end)
+			// end - state with buf[i-1]==\r and buf[i]==\n
+			if(end)	 // exit from end state
 			{
 				end=0;
-				start=&buf[i];
+				start=&buf[i];  // start - string, begining after \r\n
 			}
-			if(buf[i]=='\n' && prev=='\r')
+			if(buf[i]=='\n' && prev=='\r')	// transfer to end state
 			{
-				buf[i]=0;
-				start_len=strlen(start);
-				buf[i-1]=0;
+				buf[i]=0;			// null terminate \n
+				start_len=strlen(start);  //define string length
+				buf[i-1]=0;	// null \r
 //				ESP_LOGI(TAG,"Start=%s",start);
-				if(head && start[0]==0)
+// head - state in headers mode
+				if(head && start[0]==0) // exit from header mode ( double \r\n)
 				{
 					head=0;
 //					ESP_LOGI(TAG,"Head ended");
 				}
-				else if(head)
+				else if(head)  // headers mode parsing
 				{
-					memcpy(&header[header_len],start,start_len);
+					memcpy(&header[header_len],start,start_len); // copy header string
 					ESP_LOGI(TAG,"Header %s",header);
-					if(strstr(header,"Transfer-Encoding:") && strstr(header, "chunked"))
+					if(strstr(header,"Transfer-Encoding:") && strstr(header, "chunked"))  // transfer to chunked mode and allocate space
 					{
 						chunked=1;
 						data=malloc(MAX_CONTENT_LENGTH+1);
 //						ESP_LOGI(TAG,"Set chunked");
 					}
-					if((contl_head=(strstr(header,"Content-Length: "))))
+					if((contl_head=(strstr(header,"Content-Length: ")))) // allocate space if content-length header exists
 					{
 						n=atoi(&contl_head[16]);
 						data=malloc(n+1);
 					}
-					header_len=0;
+					header_len=0; // zero header length for next header
 				}
 				else
 				{
-					if(chunked)
+					if(chunked) // if chunked mode
 					{
-						if(count)
+						if(count) // mode where we have to get size of chunk
 						{
 							if(start_len)
 							{
-								memcpy(&chunksz[chunksz_len],start,start_len);
-								sscanf(chunksz,"%x",&c);
-								count=0;
+								memcpy(&chunksz[chunksz_len],start,start_len);  // copy chunk size string chunksz
+								ESP_LOGI(TAG," Chunk size %s",chunksz);
+								sscanf(chunksz,"%x",&c); // parse size of chunk
+//								if(c==0) return data;
+								count=0;					//transfer to chunk data mode
+								chunk_len=0;
 								ESP_LOGI(TAG,"Chunk bytes %d",c);
-								chunksz_len=0;
+								chunksz_len=0;	// zero chunksz_len
 							}
 						}
-						else
+						else  // mode where we have to get chunk
 						{
-							if(c==0) return data;
-							memcpy(&data[*content_len],start, c<len ? c :len );
-							*content_len+= c<len ? c : len ;
-							count= c<=len ? 1 : 0;
-//							ESP_LOGI(TAG,"copy %d bytes",c);
+							if(c==0) return data; // return if no more chunks (chunk length==0)
+							memcpy(&data[*content_len],start, c<len ? c :len ); //copy chunk content to data.
+							*content_len+= c<len ? c : len ; // calculate new content length
+							chunk_len+= c<len ? c : len ;
+							count= chunk_len<c ? 0 : 1; // transfer to chunk size mode if all chunk data copied
+							ESP_LOGI(TAG,"copy %d bytes, count after %d",c,count);
 						}
 					}
 					else
 					{
-						memcpy(&data[*content_len],start,len);
-						*content_len+=len;
-						if(n==*content_len) return data;
+						memcpy(&data[*content_len],start,len); // copy data in content mode
+						*content_len+=len; // calculate copied content length
+						if(n==*content_len) return data; // return if all content copied
 					}
 				}
 				prev='\n';
-				end=1;
+				end=1; // exit from end mode
 			} else prev=buf[i];
 		}
-		if(!end)
+		if(!end) //  ordinary receive
 		{
-			offset=buf+len0-start;
+			offset=buf+len0-start;  // number of bytes not proceeded in buf
 			if(offset>0)
 			{
-				if(start[offset-1]!='\r')
+				if(start[offset-1]!='\r') // not during end
 				{
-					if(head)
+					if(head) // header mode proceed
 					{
 						memcpy(&header[header_len],start,offset);
 						header_len+=offset;
 					}
-					else if(chunked && count)
+					else if(chunked && count) // chunk size proceed
 					{
 						memcpy(&chunksz[chunksz_len],start,offset);
 						chunksz_len+=offset;
 					}
-					else
+					else  // content or chunk data proceed
 					{
 						memcpy(&data[*content_len],start,offset);
 						*content_len+=offset;
+						if(chunked) chunk_len+=offset;
 					}
 					offset=0;
 				}
-				else
+				else // begin with \r
 				{
 					buf[0]='\r';
 					offset=1;
 					prev=0;
 				}
 			}
-		}
+		} else offset=0;
 	} while (1);
 	return data;
 }
@@ -484,16 +508,16 @@ static int rawWrite(WOLFSSL* ssl, char* buf, int len)
 int getAccessToken(char* buf, int max_len)
 {
     char* request[1024];
-    char* content;
+    char* content=NULL;
     int ret;
     int content_len;
-    int sockfd;
+    int sockfd=-1;
     WOLFSSL_CTX* ctx=NULL;
     WOLFSSL* ssl=NULL;
     WOLFSSL_METHOD* method;
     struct  sockaddr_in *servAddr;
     struct addrinfo *addrinfo;
-    char* data;
+    char* data=NULL;
     int ret0=-1;
 
 //    wolfSSL_Debugging_ON();
@@ -603,20 +627,29 @@ int getAccessToken(char* buf, int max_len)
 			if(strlen(par->valuestring)>max_len)
 			{
 				free(data);
+				data=NULL;
 				goto exit;
 			}
 			strcpy(buf,par->valuestring);
+			int blen=strlen(buf);
+			char* bchar=buf+blen-1;
+			while(*bchar=='.')
+			{
+				*bchar=0;
+				bchar--;
+			}
 			ESP_LOGI(TAG,"access_token=%s",buf);
 			ret0=0;
 		}
 		cJSON_Delete(json_content);
 	}
 
-	if(data!=NULL) free(data);
 exit:
+	if(data!=NULL) free(data);
     if(ssl!=NULL) wolfSSL_free(ssl);
     if(ctx!=NULL) wolfSSL_CTX_free(ctx);
     wolfSSL_Cleanup();
+    if(sockfd!=-1) close(sockfd);
     ESP_LOGI(TAG,"exit from getAcessToken FREE=%d",xPortGetFreeHeapSize());
     return ret0;
 }
@@ -628,26 +661,32 @@ static void sendMessageTask(void)
 //	getAccessToken(NULL,0);
 //	goto exit;
     char uname[USERNAME_MAX+7];
-    int csz=2048,hsz=2048;
+    int csz=3000;
+    int hsz=2048;
     int content_len;
     int ret;
-    int sockfd;
+    int sockfd=-1;
     WOLFSSL_CTX* ctx=NULL;
     WOLFSSL* ssl=NULL;
     WOLFSSL_METHOD* method;
     struct  sockaddr_in *servAddr;
     struct addrinfo *addrinfo;
+    esp_err_t err;
+
+    ESP_LOGI(TAG,"Begin SendMessageTask");
 
     content=malloc(csz);
 	strcpy(content,"{\"message\":{\"token\":\"");
 	strcpy(uname,user);
 	strcat(uname,"_token");
+	ESP_LOGI(TAG,"user token name %s",uname);
 	int l=strlen(content);
-	if((Read_str_params(uname,&content[l], csz-l))!=ESP_OK)
+	if((err=Read_str_params(uname,&content[l], csz-l))!=ESP_OK)
 	{
-		ESP_LOGE(TAG,"Error reading user token");
+		ESP_LOGE(TAG,"Error reading user token %s", esp_err_to_name(err));
 		goto exit;
 	}
+    ESP_LOGI(TAG,"User token=%s",&content[l]);
 	strcat(content,"\",\"notification\":{\"body\":\"");
 	strcat(content, messageBody);
 	strcat(content,"\",\"title\":\"");
@@ -763,12 +802,16 @@ static void sendMessageTask(void)
     {
     	data[content_len]=0;
     	ESP_LOGI(TAG, "Received data=%s",data);
-    };
+    } else ESP_LOGE(TAG,"No response!!!");
     free(data);
 
 exit:
 	if(content!=NULL) free(content);
 	if(request!=NULL) free(request);
+    if(ssl!=NULL) wolfSSL_free(ssl);
+    if(ctx!=NULL) wolfSSL_CTX_free(ctx);
+    wolfSSL_Cleanup();
+    if(sockfd!=-1) close(sockfd);
     ESP_LOGI(TAG,"exit from sendMessageTask FREE=%d",xPortGetFreeHeapSize());
 /*	while(1)
 	{
@@ -778,20 +821,21 @@ exit:
         ESP_LOGI(TAG, "%d...", countdown);
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }*/
+    smt_running=0;
     vTaskDelete(NULL);
 }
 
 
-void sendMessage(char* user0, char* messageTitle0, char* messageBody0, char* messageBody1)
+TaskHandle_t sendMessage(char* user0, char* messageTitle0, char* messageBody0, char* messageBody1)
 {
-	user=user0;
-	char messageBody[128];
+	strcpy(user,user0);
 	messageTitle=messageTitle0;
 	strcpy(messageBody,messageBody0);
 	if(messageBody0[0] && messageBody1[0]) strcat(messageBody," and ");
 	strcat(messageBody,messageBody1);
 	TaskHandle_t xHandle = NULL;
-	xTaskCreatePinnedToCore(&sendMessageTask, "https_post_request task", 8192, NULL, 5, &xHandle,0);
-	while(xHandle!=NULL && eTaskGetState(xHandle)==eRunning) vTaskDelay(100);
-	return;
+	ESP_LOGI(TAG,"Proceeding mes1 %s and mes2 %s to user %s",messageBody0,messageBody1,user0);
+	smt_running=1;
+	xTaskCreatePinnedToCore(sendMessageTask, "https_post_request task", 12000, NULL, 5, &xHandle,0);
+	return xHandle;
 }

@@ -398,16 +398,17 @@ esp_err_t Write_str_params(const char* key, char* str)
 			return ESP_OK;
 		}
 	}
+//	ESP_LOGI(TAG,"Write key %s value %s",key,str);
 	if((err=nvs_set_str(nvs,key,str))!=ESP_OK) ESP_LOGE(TAG, "Error writing str value to nvs err=%s",esp_err_to_name(err));
 	return err;
 }
 
-esp_err_t Read_str_params(const char* key, char* str, uint8_t max_len)
+esp_err_t Read_str_params(const char* key, char* str, size_t max_len)
 {
 	esp_err_t err;
 	size_t len;
 	if((err=nvs_get_str(nvs,key,NULL,&len))!=ESP_OK) return err;
-	if(len>max_len) return ESP_FAIL;
+	if(len>max_len) return ESP_ERR_NVS_INVALID_LENGTH;
 	if((err=nvs_get_str(nvs,key,str,&len))!=ESP_OK && err!=ESP_ERR_NVS_NOT_FOUND) ESP_LOGE(TAG, "Error reading %s string value from nvs err=%s",key,esp_err_to_name(err));
     return err;
 }
@@ -417,6 +418,12 @@ esp_err_t Commit_params(void)
 	esp_err_t err;
 	if((err=nvs_commit(nvs))!=ESP_OK) ESP_LOGE(TAG, "Error while commit nvs err=%s",esp_err_to_name(err));
 	return err;
+}
+
+esp_err_t EraseKey(char* key)
+{
+	nvs_erase_key(nvs,key);
+	return nvs_commit(nvs);
 }
 
 

@@ -434,6 +434,8 @@ LorawanError_t LORAX_RxDone (uint8_t* buffer, uint8_t bufferLength, int16_t rssi
     uint32_t exp;
 
     ESP_LOGI(TAG,"Received frame type=0x%02x",(buffer[0]&0xE0)>>5);
+    for(uint8_t k=0;k<bufferLength;k++) printf(" %02X",buffer[k]);
+    printf("\n");
     mhdr.value = buffer[0];
     if (  mhdr.bits.mType == FRAME_TYPE_JOIN_REQ )
     {
@@ -587,7 +589,7 @@ LorawanError_t LORAX_RxDone (uint8_t* buffer, uint8_t bufferLength, int16_t rssi
         		networkSession->currentState.t=t;
         		networkSession->currentState.local_snr=snr;
         		networkSession->currentState.local_rssi=rssi;
-        		xTaskCreatePinnedToCore(writeData,"writeData",4096,networkSession,tskIDLE_PRIORITY+2,&networkSession->app,1);
+        		xTaskCreatePinnedToCore(writeData,"writeData",4096,networkSession,tskIDLE_PRIORITY+2,&networkSession->app,0);
         	}
         }
         if(mhdr.bits.mType == FRAME_TYPE_DATA_UNCONFIRMED_UP && !networkSession->flags.REQUEST_SEND_ANSWER) xTimerStop(networkSession->sendAnswerTimerId->timer, 0);

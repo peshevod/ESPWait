@@ -67,6 +67,7 @@ typedef struct
 bool init_sdmmc(void);
 void writeData(void* pvParams);
 esp_err_t getJsonData(char* user, char* role, void* pvParams,char* out, int max_length);
+TaskHandle_t sendMessage(char* user0, char* messageTitle0, char* messageBody0, char* messageBody1);
 
 #ifdef __cplusplus
 }

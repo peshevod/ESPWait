@@ -1218,6 +1218,7 @@ httpd_handle_t start_my_server(void)
     conf.httpd.uri_match_fn=httpd_uri_match_wildcard;
     conf.httpd.max_uri_handlers=16;
     conf.port_insecure = 0xffff;
+    conf.httpd.core_id = 0;
 
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.stack_size=6144;

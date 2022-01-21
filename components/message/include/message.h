@@ -11,7 +11,6 @@ extern "C" {
 void messagingInit(void);
 char* createContent(int* content_len);
 int getAccessToken(char* buf, int max_len);
-void sendMessage(char* user0, char* messageTitle0, char* messageBody0, char* messageBody1);
 
 #ifdef __cplusplus
 }

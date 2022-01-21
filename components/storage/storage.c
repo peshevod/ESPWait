@@ -17,6 +17,14 @@
 static const char *TAG = "storage";
 sdmmc_card_t* card;
 static DIR* rootDir;
+TimerHandle_t messageTimer;
+TaskHandle_t messageTaskHandle=NULL;
+NetworkSession_t* networkSession;
+Data_t* data;
+extern uint8_t smt_running;
+
+
+void messagePrepare( TimerHandle_t xTimer );
 
 bool init_sdmmc(void)
 {
@@ -64,21 +72,19 @@ bool init_sdmmc(void)
     // Card has been initialized, print its properties
     sdmmc_card_print_info(stdout, card);
     rootDir=opendir(MOUNT_POINT);
+    messageTimer=xTimerCreate("messageTimer", 2000 / portTICK_PERIOD_MS, pdFALSE, (void*) MESSAGE_TIMER, messagePrepare);
     return true;
 }
 
 void writeData(void* pvParams)
 {
-	NetworkSession_t* networkSession=(NetworkSession_t*)pvParams;
+	networkSession=(NetworkSession_t*)pvParams;
 	char filename[64];
-    char uname[16];
-    char devUser[USERNAME_MAX];
-    char sensor1_message[64],sensor2_message[64];
 
 	for(uint8_t i=0;i<networkSession->payloadLength;i++) printf("0x%02X ",(networkSession->payload)[i]);
     printf("\n");
 
-    Data_t* data=(Data_t*)networkSession->payload;
+    data=(Data_t*)networkSession->payload;
 	networkSession->currentState.sync=0xFFFFFFFF;
     networkSession->currentState.devnonce=networkSession->endDevice->devNonce;
     networkSession->currentState.fcntup=networkSession->FCntUp.value;
@@ -88,11 +94,12 @@ void writeData(void* pvParams)
     networkSession->currentState.rssi=-157 + (data->snr>=0 ? data->rssi : data->rssi+data->snr/4);
     networkSession->currentState.power=data->power;
     networkSession->currentState.sensors.value=data->sensors.value;
-    ESP_LOGI(TAG,"Received data from device Eui=%016llx devNonce=0x%04x FcntUp=0x%08x loca.Power=%d local.RSSI=%d local.SNR=%d Temperature=%d BatLevel=%d remote.RSSI=%d remote.SNR=%d remote.Power=%d Sensors1 events=%d Sensor2 events=%d",
+    ESP_LOGI(TAG,"Received data from device Eui=%016llx devNonce=0x%04x FcntUp=0x%08x loca.Power=%d local.RSSI=%d local.SNR=%d Temperature=%d BatLevel=%d remote.RSSI=%d remote.SNR=%d remote.Power=%d Sensors1 events=%d Sensors1 cur=%d Sensors1 mode=%d Sensor2 events=%d Sensor2 cur=%d Sensor2 mode=%d",
     		networkSession->endDevice->devEui.eui, networkSession->endDevice->devNonce, networkSession->FCntUp.value, networkSession->currentState.local_power,
 			networkSession->currentState.local_rssi, networkSession->currentState.local_snr, networkSession->currentState.temperature, networkSession->currentState.batlevel,
 			networkSession->currentState.rssi, networkSession->currentState.snr, networkSession->currentState.power,
-			networkSession->currentState.sensors.sensor1_evt, networkSession->currentState.sensors.sensor2_evt);
+			networkSession->currentState.sensors.sensor1_evt, networkSession->currentState.sensors.sensor1_cur, networkSession->currentState.sensors.sensor1_mode,
+			networkSession->currentState.sensors.sensor2_evt, networkSession->currentState.sensors.sensor2_cur, networkSession->currentState.sensors.sensor2_mode);
 
 
 	strcpy(filename,networkSession->dir);
@@ -107,16 +114,39 @@ void writeData(void* pvParams)
 	}
 	else ESP_LOGE(TAG, "Failed to open file %s for writing",filename);
 	if(f!=NULL) fclose(f);
-	sensor1_message[0]=0;
-	sensor2_message[0]=0;
-	if(data->sensors.sensor1_mode&SENSOR_MODE_ENABLE && data->sensors.sensor1_mode&SENSOR_MODE_TRIGGER && ( (data->sensors.sensor1_cur && data->sensors.sensor1_mode&SENSOR_MODE_TRIGGER) || (!data->sensors.sensor1_cur && !(data->sensors.sensor1_mode&SENSOR_MODE_TRIGGER)) ))
+
+	xTimerReset(messageTimer, 0);
+
+	char* token=malloc(1024);
+	esp_err_t err;
+	if((err=Read_str_params("ilya_token",token, 1024))!=ESP_OK)
+	{
+		ESP_LOGE(TAG,"Error reading user token %s", esp_err_to_name(err));
+	} else ESP_LOGI(TAG,"User token=%s",token);
+    free(token);
+
+
+	vTaskDelete(NULL);
+}
+
+
+void messagePrepare( TimerHandle_t xTimer )
+{
+    char uname[16];
+    char devUser[USERNAME_MAX];
+    char sensor1_message[64],sensor2_message[64];
+    eTaskState e;
+    ESP_LOGI(TAG,"Enter in messagePrepare");
+    if(data->sensors.sensor1_mode&SENSOR_MODE_ENABLE && data->sensors.sensor1_mode&SENSOR_MODE_TRIGGER && data->sensors.sensor1_evt && data->sensors.sensor1_evt)
+//		if(data->sensors.sensor1_mode&SENSOR_MODE_ENABLE && data->sensors.sensor1_mode&SENSOR_MODE_TRIGGER && ( (data->sensors.sensor1_cur && data->sensors.sensor1_mode&SENSOR_MODE_TRIGGER) || (!data->sensors.sensor1_cur && !(data->sensors.sensor1_mode&SENSOR_MODE_TRIGGER)) ))
 	{
 		sprintf(sensor1_message,"Alarm from Sensor1 of device %s, events=%d",networkSession->endDevice->Name,data->sensors.sensor1_evt);
-	}
-	if(data->sensors.sensor2_mode&SENSOR_MODE_ENABLE && data->sensors.sensor2_mode&SENSOR_MODE_TRIGGER && ( (data->sensors.sensor2_cur && data->sensors.sensor2_mode&SENSOR_MODE_TRIGGER) || (!data->sensors.sensor2_cur && !(data->sensors.sensor2_mode&SENSOR_MODE_TRIGGER)) ))
+	} else sensor1_message[0]=0;
+	if(data->sensors.sensor2_mode&SENSOR_MODE_ENABLE && data->sensors.sensor2_mode&SENSOR_MODE_TRIGGER && data->sensors.sensor2_evt && data->sensors.sensor2_evt)
+//		if(data->sensors.sensor2_mode&SENSOR_MODE_ENABLE && data->sensors.sensor2_mode&SENSOR_MODE_TRIGGER && ( (data->sensors.sensor2_cur && data->sensors.sensor2_mode&SENSOR_MODE_TRIGGER) || (!data->sensors.sensor2_cur && !(data->sensors.sensor2_mode&SENSOR_MODE_TRIGGER)) ))
 	{
 		sprintf(sensor2_message,"Alarm from Sensor2 of device %s, events=%d",networkSession->endDevice->Name,data->sensors.sensor2_evt);
-	}
+	} else sensor2_message[0]=0;
 	if(sensor1_message[0] || sensor2_message[0])
 	{
 		for(uint8_t k=0;k<8;k++)
@@ -126,12 +156,23 @@ void writeData(void* pvParams)
 				sprintf(uname,"USR%d",networkSession->endDevice->users[k]);
 				if(Read_str_params(uname, devUser, PAR_STR_MAX_SIZE)==ESP_OK)
 				{
-					sendMessage(devUser,"Alarm from ESPWait!",sensor1_message,sensor2_message);
+					ESP_LOGI(TAG,"User %s",devUser);
+					if(messageTaskHandle!=NULL)
+					{
+						e=eTaskGetState(messageTaskHandle);
+						if(e==eRunning) ESP_LOGI(TAG,"messageHandleTask state eRunning");
+						if(e==eBlocked) ESP_LOGI(TAG,"messageHandleTask state eBlocked");
+						if(e==eDeleted) ESP_LOGI(TAG,"messageHandleTask state eDeleted");
+						if(e==eInvalid) ESP_LOGI(TAG,"messageHandleTask state eInvalid");
+						if(e!=eRunning && e!=eBlocked) messageTaskHandle=NULL;
+					}
+					if(messageTaskHandle==NULL) messageTaskHandle=sendMessage(devUser,"Alarm from ESPWait!",sensor1_message,sensor2_message);
+					else ESP_LOGI(TAG,"Task handle busy");
 				}
 			}
 		}
 	}
-    vTaskDelete(NULL);
+	xTimerStop(messageTimer, 0);
 }
 
 
