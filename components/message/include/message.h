@@ -1,16 +1,21 @@
 #ifndef COMPONENTS_MESSAGE_MESSAGE_H_
 #define COMPONENTS_MESSAGE_MESSAGE_H_
 
+#include "freertos/FreeRTOS.h"
+#include "freertos/timers.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #define MAX_CONTENT_LENGTH	2048
+#define MAX_DGKEY_NAME	64
 
-
-void messagingInit(void);
-char* createContent(int* content_len);
-int getAccessToken(char* buf, int max_len);
+TaskHandle_t sendMessage(char* user0, char* messageTitle0, char* messageBody0, char* messageBody1);
+char* getDGKey(void);
+char* createDGKey(char* device_token);
+char* removeFromDG(const char* device_token);
+char* addToDG(char* device_token);
 
 #ifdef __cplusplus
 }

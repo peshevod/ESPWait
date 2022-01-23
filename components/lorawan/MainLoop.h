@@ -43,7 +43,8 @@ typedef enum
 	SEND_JOIN_ACCEPT_1_TIMER,
 	SEND_ACK_TIMER,
 	REPEAT_TRANSMIT_TIMER,
-	MESSAGE_TIMER
+	MESSAGE_TIMER,
+	ACCESS_TIMER
 } TimerEvent_t;
 
 void setEventMainLoop(void);

@@ -22,6 +22,10 @@
 #include "lwip/err.h"
 #include "lwip/sockets.h"
 #include "cmd_nvs.h"
+#include "my_http.h"
+#include "access.h"
+#include "esp_err.h"
+#include "nvs_flash.h"
 
 
 #define LOG_LOCAL_LEVEL ESP_LOG_VERBOSE
@@ -30,17 +34,17 @@
 extern const char json_start[]	asm("_binary_ServiceAccount_json_start");
 extern const char json_end[] 	asm("_binary_ServiceAccount_json_end");
 
-const char TAG[]="message.c";
+static const char TAG[]="message.c";
 RsaKey         rsaKey;
-char *project_id;
-char *private_key_id;
-char* client_email;
-char* client_id;
-char* auth_uri;
-char* token_uri;
-char* host;
-const char scope[]="https://www.googleapis.com/auth/firebase.messaging";
-word32 SIG_LEN=256;
+extern char *project_id;
+//char *private_key_id;
+//char* client_email;
+//char* client_id;
+//char* auth_uri;
+//char* token_uri;
+//char* host;
+//const char scope[]="https://www.googleapis.com/auth/firebase.messaging";
+//word32 SIG_LEN=256;
 char* access_token;
 char user[USERNAME_MAX];
 char* messageTitle;
@@ -48,610 +52,15 @@ char messageBody[128];
 uint8_t message_sent;
 uint8_t message_sending=0;
 uint8_t smt_running=0;
+const char fcm[]="fcm.googleapis.com";
+const char sender_id[]="678314569448";
+const char key[]="AAAAne6y7ug:APA91bGrGmqtaMj-hrHyF3S4rANa5ph5Po7C9zvaJnH2C3LbqtSNpeVcboJLZqZcFbyEz1P0-kPcd-ko3I7vFeviI54sN-HukhA0_ZMrbL133NAD1_QIEz7GEzSRZJKM6PGg58HBfTyd";
 
-
-void prepareKey(const char* key)
-{
-	int ret;
-    word32 idx;
-	int l=strlen(key);
-	byte* key_buffer=malloc(l+1);
-
-	ret=wc_KeyPemToDer((unsigned char*)key,l,key_buffer,l,NULL);
-	if(ret<0)
-	{
-    	ESP_LOGE(TAG,"Error transfering PEM to DER err=%d %s",ret, wc_GetErrorString(ret));
-		free(key_buffer);
-		return;
-	}
-	uint32_t key_buf_len=ret;
-	ESP_LOGI(TAG,"DER len=%d",key_buf_len);
-
-    if((ret = wc_InitRsaKey(&rsaKey, NULL))!=0)
-    {
-    	ESP_LOGE(TAG,"Error initializing RSA Key err=%d %s",ret, wc_GetErrorString(ret));
-		free(key_buffer);
-		return;
-    }
-    idx=0;
-    if((ret = wc_RsaPrivateKeyDecode(key_buffer, &idx, &rsaKey,key_buf_len))!=0)
-    {
-    	ESP_LOGE(TAG,"Error decoding RSA Key err=%d %s",ret, wc_GetErrorString(ret));
-		free(key_buffer);
-		return;
-    }
-    free(key_buffer);
-	ret=wc_SignatureGetSize(WC_SIGNATURE_TYPE_RSA_W_ENC, &rsaKey,sizeof(rsaKey));
-	if(ret<0)
-	{
-		ESP_LOGE(TAG,"Error in SignatureGetSize err=%d %s",ret, wc_GetErrorString(ret));
-		return;
-	}
-	SIG_LEN=ret;
-    ESP_LOGI(TAG,"RSA Key successfully prepared");
-}
-
-int Sign(const char* body, uint32_t Body_len, uint8_t* b64Sig_buf, word32* b64Sig_len)
-{
-	WC_RNG rng;
-	int ret;
-
-	ret=wc_InitRng(&rng);
-	if(ret<0)
-	{
-		ESP_LOGE(TAG,"Error initializing Random generator err=%d %s",ret, wc_GetErrorString(ret));
-		return -1;
-	}
-	ret=wc_HashGetDigestSize(WC_HASH_TYPE_SHA256);
-	if(ret<0)
-	{
-		ESP_LOGE(TAG,"Error in HashGetDigestSize err=%d %s",ret, wc_GetErrorString(ret));
-		return -2;
-	}
-	word32 Hash_len=ret;
-	byte* Hash_buf=malloc(Hash_len);
-	ret=wc_Hash(WC_HASH_TYPE_SHA256,(unsigned char*)body,Body_len,Hash_buf,Hash_len);
-	if(ret<0)
-	{
-		ESP_LOGE(TAG,"Error in wc_Hash err=%d %s",ret, wc_GetErrorString(ret));
-		free(Hash_buf);
-		return -3;
-	}
-	word32 Digest_len=Hash_len+Body_len;
-	byte* Digest_buf=malloc(Digest_len);
-	ret=wc_EncodeSignature(Digest_buf,Hash_buf,Hash_len,SHA256h);
-	if(ret<0)
-	{
-		ESP_LOGE(TAG,"Error in EncodeSignature err=%d %s",ret, wc_GetErrorString(ret));
-		free(Hash_buf);
-		free(Digest_buf);
-		return -4;
-	}
-	Digest_len=ret;
-	free(Hash_buf);
-	word32 Sig_len=SIG_LEN;
-	byte* Sig_buf=malloc(Sig_len);
-	ret=wc_RsaSSL_Sign(Digest_buf,Digest_len,Sig_buf,Sig_len,&rsaKey,&rng);
-	if(ret<0)
-	{
-		ESP_LOGE(TAG,"Error in RsaSSL_Sign err=%d %s",ret, wc_GetErrorString(ret));
-		free(Digest_buf);
-		free(Sig_buf);
-		return -5;
-	}
-	free(Digest_buf);
-	ret=wc_SignatureGenerate(WC_HASH_TYPE_SHA256, WC_SIGNATURE_TYPE_RSA_W_ENC,(unsigned char*)body, Body_len, Sig_buf,&Sig_len,&rsaKey,sizeof(rsaKey),&rng);
-	if(ret<0)
-	{
-		ESP_LOGE(TAG,"Error in SignatureGenerate err=%d %s",ret, wc_GetErrorString(ret));
-		free(Sig_buf);
-		return -6;
-	}
-    ret=Base64url_Encode(Sig_buf, Sig_len, b64Sig_buf, b64Sig_len);
-	if(ret<0)
-	{
-		ESP_LOGE(TAG,"Error in b64 Encode signature err=%d %s",ret, wc_GetErrorString(ret));
-		free(Sig_buf);
-		return -7;
-	}
-	free(Sig_buf);
-	wc_FreeRng(&rng);
-	return *b64Sig_len;
-}
-
-void JsonParse(const char* json_buf)
-{
-    cJSON *par;
-	cJSON *json_content = cJSON_Parse(json_buf);
-	if(json_content!=NULL)
-	{
-		par = cJSON_GetObjectItemCaseSensitive(json_content,"project_id");
-		if(par!=NULL && cJSON_IsString(par) && par->valuestring!=NULL )
-		{
-			project_id=malloc(strlen(par->valuestring)+1);
-			strcpy(project_id,par->valuestring);
-			ESP_LOGI(TAG,"project_id=%s",project_id);
-		}
-		par = cJSON_GetObjectItemCaseSensitive(json_content,"private_key_id");
-		if(par!=NULL && cJSON_IsString(par) && par->valuestring!=NULL )
-		{
-			private_key_id=malloc(strlen(par->valuestring)+1);
-			strcpy(private_key_id,par->valuestring);
-			ESP_LOGI(TAG,"private_key_id=%s",private_key_id);
-		}
-		par = cJSON_GetObjectItemCaseSensitive(json_content,"client_email");
-		if(par!=NULL && cJSON_IsString(par) && par->valuestring!=NULL )
-		{
-			client_email=malloc(strlen(par->valuestring)+1);
-			strcpy(client_email,par->valuestring);
-//			cJSON_Delete(par);
-			ESP_LOGI(TAG,"client_email=%s",client_email);
-		}
-		par = cJSON_GetObjectItemCaseSensitive(json_content,"client_id");
-		if(par!=NULL && cJSON_IsString(par) && par->valuestring!=NULL )
-		{
-			client_id=malloc(strlen(par->valuestring)+1);
-			strcpy(client_id,par->valuestring);
-			ESP_LOGI(TAG,"client_id=%s",client_id);
-		}
-		par = cJSON_GetObjectItemCaseSensitive(json_content,"auth_uri");
-		if(par!=NULL && cJSON_IsString(par) && par->valuestring!=NULL )
-		{
-			auth_uri=malloc(strlen(par->valuestring)+1);
-			strcpy(auth_uri,par->valuestring);
-			ESP_LOGI(TAG,"auth_uri=%s",auth_uri);
-		}
-		par = cJSON_GetObjectItemCaseSensitive(json_content,"token_uri");
-		if(par!=NULL && cJSON_IsString(par) && par->valuestring!=NULL )
-		{
-			token_uri=malloc(strlen(par->valuestring)+1);
-			strcpy(token_uri,par->valuestring);
-			char* x=strchr(&token_uri[8],'/');
-			*x=0;
-			host=malloc(strlen(&token_uri[8])+1);
-			strcpy(host,&token_uri[8]);
-			*x='/';
-			ESP_LOGI(TAG,"token_uri=%s",token_uri);
-		}
-		par = cJSON_GetObjectItemCaseSensitive(json_content,"private_key");
-		if(par!=NULL && cJSON_IsString(par) && par->valuestring!=NULL )
-		{
-			prepareKey(par->valuestring);
-		}
-		cJSON_Delete(json_content);
-	}
-
-}
-
-void messagingInit(void)
-{
-	JsonParse(json_start);
-}
-
-char* createContent(int* content_len)
-{
-	char* head=malloc(256);
-	sprintf(head,"{\"alg\":\"RS256\",\"kid\":\"%s\",\"typ\":\"JWT\"}",private_key_id);
-    char* payload=malloc(512);
-    uint32_t now=(uint32_t)time(NULL);
-    ESP_LOGI(TAG,"iat=%d exp=%d",now,now+3599);
-    sprintf(payload,"{\"aud\":\"%s\",\"exp\":%d,\"iat\":%d,\"iss\":\"%s\",\"scope\":\"%s\"}",token_uri,now+3599,now,client_email,scope);
-    word32 lcont=75;
-    word32 l=(strlen(head)+strlen(payload)+SIG_LEN)*3/2+lcont;
-    uint8_t* b64head=malloc(l);
-    strcpy((const char*)b64head,"grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=");
-    word32 lhead=l;
-    int ret=Base64url_Encode((uint8_t*)head, strlen(head), &b64head[lcont], &lhead);
-	if(ret<0)
-	{
-		ESP_LOGE(TAG,"Error in createAssertion Encode head err=%d %s",ret, wc_GetErrorString(ret));
-		free(head);
-		free(payload);
-		free(b64head);
-		return NULL;
-	}
-	free(head);
-	b64head[lcont+lhead]='.';
-    word32 lpayload=l-lcont-lhead-1;
-    ret=Base64url_Encode((uint8_t*)payload, strlen(payload), &b64head[lcont+lhead+1], &lpayload);
-	if(ret<0)
-	{
-		ESP_LOGE(TAG,"Error in createAssertion Encode payload err=%d %s",ret, wc_GetErrorString(ret));
-		free(payload);
-		free(b64head);
-		return NULL;
-	}
-	free(payload);
-	b64head[lcont+lhead+lpayload+1]='.';
-	uint32_t b64Sig_len=l-lcont-lhead-2-lpayload;
-	*content_len=Sign((char*)(&b64head[lcont]),lhead+1+lpayload,&b64head[lcont+lhead+2+lpayload],&b64Sig_len);
-	if(*content_len<0)
-	{
-		ESP_LOGE(TAG,"Error content err=%d",*content_len);
-		return NULL;
-	}
-	*content_len+=lcont+lhead+2+lpayload;
-	b64head[*content_len]=0;
-	ESP_LOGI(TAG,"Content=%s",b64head);
-//	b64head[lhead]=0;
-//	b64head[lhead+1+lpayload]=0;
-//	ESP_LOGI(TAG,"%d b64head=%s",strlen(((char*)b64head)),((char*)b64head));
-//	ESP_LOGI(TAG,"%d b64payload=%s",strlen(&((char*)b64head)[lhead+1]),&((char*)b64head)[lhead+1]);
-//	ESP_LOGI(TAG,"%d b64sign=%s",strlen(&((char*)b64head)[lhead+2+lpayload]),&((char*)b64head)[lhead+2+lpayload]);
-
-	return (char*)b64head;
-}
 
 int myver(int preverify, WOLFSSL_X509_STORE_CTX* store)
 {
 	ESP_LOGI(TAG,"Preverify=%d",preverify);
 	return 1;
-}
-
-static esp_err_t resolve_host_name(const char *host, size_t hostlen, struct addrinfo **address_info)
-{
-    struct addrinfo hints;
-    memset(&hints, 0, sizeof(hints));
-    hints.ai_family = AF_INET;
-    hints.ai_socktype = SOCK_STREAM;
-
-    char *use_host = strndup(host, hostlen);
-    if (!use_host) {
-        return ESP_ERR_NO_MEM;
-    }
-
-    ESP_LOGD(TAG, "host:%s: strlen %lu", use_host, (unsigned long)hostlen);
-    if (getaddrinfo(use_host, NULL, &hints, address_info)) {
-        ESP_LOGE(TAG, "couldn't get ip addr for :%s:", use_host);
-        free(use_host);
-        return ESP_ERR_ESP_TLS_CANNOT_RESOLVE_HOSTNAME;
-    }
-    free(use_host);
-    return ESP_OK;
-}
-
-
-static char* rawRead(WOLFSSL* ssl, int* content_len)
-{
-	uint8_t head=1;
-	uint8_t chunked=0;
-	uint8_t count=1;
-	char prev=0;
-	char* start=NULL;
-	uint8_t end=1;
-	unsigned int c=0;
-	int n=0;
-    char buf[512];
-    int ret, len, len0;
-    char* data=NULL;
-
-    len0 = sizeof(buf);
-	bzero(buf, sizeof(buf));
-	uint32_t offset=0;
-	*content_len=0;
-	char header[1024];
-	char chunksz[8];
-	int header_len=0;
-	int chunksz_len=0;
-	int start_len=0;
-	char* contl_head;
-	int chunk_len=0;
-
-	do
-	{
-		start=buf;
-		ret = wolfSSL_read(ssl, &buf[offset], len0-offset);
-
-		if (ret == SSL_ERROR_WANT_WRITE  || ret == SSL_ERROR_WANT_READ) {
-			continue;
-		}
-
-		if (ret < 0) {
-			ESP_LOGE(TAG, "wolfSSL_read  error=%d", wolfSSL_get_error(ssl,ret));
-			*content_len=0;
-			return NULL;
-		}
-
-		if (ret == 0) {
-			ESP_LOGI(TAG, "connection closed err=%d", wolfSSL_get_error(ssl,ret));
-			return data;
-		}
-
-/*		int ij=0;
-		for(int ii=offset;ii<offset+ret;ii++)
-		{
-			printf(" %02x",buf[ii]);
-			if(++ij>=32)
-			{
-				printf("\n");
-				ij=0;
-			}
-		}
-		if(ij!=0) printf("\n");*/
-
-		len = ret+offset;
-		ESP_LOGI(TAG, "%d bytes read", len);
-
-		for (int i = 0; i < len; i++)
-		{
-			// end - state with buf[i-1]==\r and buf[i]==\n
-			if(end)	 // exit from end state
-			{
-				end=0;
-				start=&buf[i];  // start - string, begining after \r\n
-			}
-			if(buf[i]=='\n' && prev=='\r')	// transfer to end state
-			{
-				buf[i]=0;			// null terminate \n
-				start_len=strlen(start);  //define string length
-				buf[i-1]=0;	// null \r
-//				ESP_LOGI(TAG,"Start=%s",start);
-// head - state in headers mode
-				if(head && start[0]==0) // exit from header mode ( double \r\n)
-				{
-					head=0;
-//					ESP_LOGI(TAG,"Head ended");
-				}
-				else if(head)  // headers mode parsing
-				{
-					memcpy(&header[header_len],start,start_len); // copy header string
-					ESP_LOGI(TAG,"Header %s",header);
-					if(strstr(header,"Transfer-Encoding:") && strstr(header, "chunked"))  // transfer to chunked mode and allocate space
-					{
-						chunked=1;
-						data=malloc(MAX_CONTENT_LENGTH+1);
-//						ESP_LOGI(TAG,"Set chunked");
-					}
-					if((contl_head=(strstr(header,"Content-Length: ")))) // allocate space if content-length header exists
-					{
-						n=atoi(&contl_head[16]);
-						data=malloc(n+1);
-					}
-					header_len=0; // zero header length for next header
-				}
-				else
-				{
-					if(chunked) // if chunked mode
-					{
-						if(count) // mode where we have to get size of chunk
-						{
-							if(start_len)
-							{
-								memcpy(&chunksz[chunksz_len],start,start_len);  // copy chunk size string chunksz
-								ESP_LOGI(TAG," Chunk size %s",chunksz);
-								sscanf(chunksz,"%x",&c); // parse size of chunk
-//								if(c==0) return data;
-								count=0;					//transfer to chunk data mode
-								chunk_len=0;
-								ESP_LOGI(TAG,"Chunk bytes %d",c);
-								chunksz_len=0;	// zero chunksz_len
-							}
-						}
-						else  // mode where we have to get chunk
-						{
-							if(c==0) return data; // return if no more chunks (chunk length==0)
-							memcpy(&data[*content_len],start, c<len ? c :len ); //copy chunk content to data.
-							*content_len+= c<len ? c : len ; // calculate new content length
-							chunk_len+= c<len ? c : len ;
-							count= chunk_len<c ? 0 : 1; // transfer to chunk size mode if all chunk data copied
-							ESP_LOGI(TAG,"copy %d bytes, count after %d",c,count);
-						}
-					}
-					else
-					{
-						memcpy(&data[*content_len],start,len); // copy data in content mode
-						*content_len+=len; // calculate copied content length
-						if(n==*content_len) return data; // return if all content copied
-					}
-				}
-				prev='\n';
-				end=1; // exit from end mode
-			} else prev=buf[i];
-		}
-		if(!end) //  ordinary receive
-		{
-			offset=buf+len0-start;  // number of bytes not proceeded in buf
-			if(offset>0)
-			{
-				if(start[offset-1]!='\r') // not during end
-				{
-					if(head) // header mode proceed
-					{
-						memcpy(&header[header_len],start,offset);
-						header_len+=offset;
-					}
-					else if(chunked && count) // chunk size proceed
-					{
-						memcpy(&chunksz[chunksz_len],start,offset);
-						chunksz_len+=offset;
-					}
-					else  // content or chunk data proceed
-					{
-						memcpy(&data[*content_len],start,offset);
-						*content_len+=offset;
-						if(chunked) chunk_len+=offset;
-					}
-					offset=0;
-				}
-				else // begin with \r
-				{
-					buf[0]='\r';
-					offset=1;
-					prev=0;
-				}
-			}
-		} else offset=0;
-	} while (1);
-	return data;
-}
-
-
-static int rawWrite(WOLFSSL* ssl, char* buf, int len)
-{
-    size_t written_bytes = 0;
-    int ret;
-	do {
-		ret = wolfSSL_write(ssl,
-								 &buf[written_bytes],
-								 len-written_bytes);
-		if (ret >= 0) {
-			ESP_LOGI(TAG, "%d header bytes written", ret);
-			written_bytes += ret;
-		} else if (ret != SSL_ERROR_WANT_READ  && ret != SSL_ERROR_WANT_WRITE) {
-			ESP_LOGE(TAG, "wolfSSL_write header  returned: %d", wolfSSL_get_error(ssl,ret));
-			return -1;
-		}
-	} while (written_bytes < len);
-	return 0;
-}
-
-int getAccessToken(char* buf, int max_len)
-{
-    char* request[1024];
-    char* content=NULL;
-    int ret;
-    int content_len;
-    int sockfd=-1;
-    WOLFSSL_CTX* ctx=NULL;
-    WOLFSSL* ssl=NULL;
-    WOLFSSL_METHOD* method;
-    struct  sockaddr_in *servAddr;
-    struct addrinfo *addrinfo;
-    char* data=NULL;
-    int ret0=-1;
-
-//    wolfSSL_Debugging_ON();
-
-    if ((ret = resolve_host_name(host, strlen(host), &addrinfo)) != ESP_OK) {
-        goto exit;
-    }
-
-
-    /* create and set up socket */
-    sockfd = socket(addrinfo->ai_family, addrinfo->ai_socktype, addrinfo->ai_protocol);
-    servAddr = (struct sockaddr_in *)addrinfo->ai_addr;
-    servAddr->sin_port = htons(443);
-    ESP_LOGI(TAG,"Host=%s Ip-address=%s",host, inet_ntoa(servAddr->sin_addr.s_addr));
-
-
-    /* connect to socket */
-    ret=connect(sockfd,  servAddr, addrinfo->ai_addrlen);
-    if(ret<0)
-    {
-    	ESP_LOGE(TAG,"Socket not connected");
-    	goto exit;
-    }
-
-    /* initialize wolfssl library */
-    wolfSSL_Init();
-    method = wolfTLSv1_3_client_method(); /* use TLS v1.2 or 1.3 */
-
-    /* make new ssl context */
-    if ( (ctx = wolfSSL_CTX_new(method)) == NULL) {
-    	ESP_LOGE(TAG,"Err ctx method");
-    	goto exit;
-    }
-
-    wolfSSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, NULL);
-    ret=wolfSSL_CTX_load_verify_locations(ctx, NULL, "/sdcard/certs");
-    if(ret<0)
-    {
-    	ESP_LOGE(TAG,"Error loading cert %d", ret);
-    	goto exit;
-    }
-/*    ret=wolfSSL_CTX_trust_peer_cert(ctx,"/sdcard/trusted/oauth2.cer",SSL_FILETYPE_ASN1);
-    if(ret<0)
-    {
-    	ESP_LOGE(TAG,"Error loading trusted %d", wolfSSL_get_error(ssl,ret));
-    	goto exit;
-    }*/
-    ret=wolfSSL_CTX_UseSNI(ctx, WOLFSSL_SNI_HOST_NAME, (void *) host, XSTRLEN(host));
-    if(ret<0)
-    {
-    	ESP_LOGE(TAG,"Error loading hostName %d", ret);
-    	goto exit;
-    }
-
-    /* make new wolfSSL struct */
-    if ( (ssl = wolfSSL_new(ctx)) == NULL) {
-     	ESP_LOGE(TAG,"Err create ssl");
-     	goto exit;
-    }
-
-    /* Connect wolfssl to the socket, server, then send message */
-    ret=wolfSSL_set_fd(ssl, sockfd);
-    if(ret<0)
-    {
-    	ESP_LOGE(TAG,"Error set fd");
-    	goto exit;
-    }
-
-    wolfSSL_check_domain_name (ssl, host);
-
-    ESP_LOGI(TAG,"before connect getAccessToken FREE=%d",xPortGetFreeHeapSize());
-    ret=wolfSSL_connect(ssl);
-    if(ret<0)
-    {
-    	ESP_LOGE(TAG,"Error connect %d",ret);
-    	goto exit;
-    }
-
-    content=createContent(&content_len);
-    if(content==NULL)
-    {
-    	ESP_LOGE(TAG,"Unable to perform request: Content is NULL");
-    	goto exit;
-    }
-    sprintf(request,"POST %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: esp-idf/1.0 esp32\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: %d\r\n\r\n",token_uri,host,content_len);
-
-    if(rawWrite(ssl,request,strlen(request))) goto exit;
-
-    ret=rawWrite(ssl, content, content_len);
-    free(content);
-    if(ret<0) goto exit;
-
-    ESP_LOGI(TAG, "Reading HTTP response...");
-    content_len=0;
-    if((data=rawRead(ssl, &content_len))!=NULL)
-    {
-    	data[content_len]=0;
-    	ESP_LOGI(TAG, "Received data=%s",data);
-    };
-
-	cJSON *json_content = cJSON_Parse(data);
-	if(json_content!=NULL)
-	{
-		cJSON *par = cJSON_GetObjectItemCaseSensitive(json_content,"access_token");
-		if(par!=NULL && cJSON_IsString(par) && par->valuestring!=NULL )
-		{
-			if(strlen(par->valuestring)>max_len)
-			{
-				free(data);
-				data=NULL;
-				goto exit;
-			}
-			strcpy(buf,par->valuestring);
-			int blen=strlen(buf);
-			char* bchar=buf+blen-1;
-			while(*bchar=='.')
-			{
-				*bchar=0;
-				bchar--;
-			}
-			ESP_LOGI(TAG,"access_token=%s",buf);
-			ret0=0;
-		}
-		cJSON_Delete(json_content);
-	}
-
-exit:
-	if(data!=NULL) free(data);
-    if(ssl!=NULL) wolfSSL_free(ssl);
-    if(ctx!=NULL) wolfSSL_CTX_free(ctx);
-    wolfSSL_Cleanup();
-    if(sockfd!=-1) close(sockfd);
-    ESP_LOGI(TAG,"exit from getAcessToken FREE=%d",xPortGetFreeHeapSize());
-    return ret0;
 }
 
 static void sendMessageTask(void)
@@ -666,12 +75,10 @@ static void sendMessageTask(void)
     int content_len;
     int ret;
     int sockfd=-1;
-    WOLFSSL_CTX* ctx=NULL;
     WOLFSSL* ssl=NULL;
-    WOLFSSL_METHOD* method;
-    struct  sockaddr_in *servAddr;
-    struct addrinfo *addrinfo;
     esp_err_t err;
+    char* access_token;
+	char uri[128];
 
     ESP_LOGI(TAG,"Begin SendMessageTask");
 
@@ -679,7 +86,7 @@ static void sendMessageTask(void)
 	strcpy(content,"{\"message\":{\"token\":\"");
 	strcpy(uname,user);
 	strcat(uname,"_token");
-	ESP_LOGI(TAG,"user token name %s",uname);
+//	ESP_LOGI(TAG,"user token name %s",uname);
 	int l=strlen(content);
 	if((err=Read_str_params(uname,&content[l], csz-l))!=ESP_OK)
 	{
@@ -695,96 +102,27 @@ static void sendMessageTask(void)
 	ESP_LOGI(TAG,"Content=%s",content);
 	content_len=strlen(content);
 	request=malloc(hsz);
-	char fcm[]="fcm.googleapis.com";
-	char uri[128];
+//	ESP_LOGI(TAG,"fcm %s",fcm);
 	strcpy(uri,fcm);
 	strcat(uri,"/v1/projects/");
 	strcat(uri,project_id);
 	strcat(uri,"/messages:send");
-
+//	ESP_LOGI(TAG,"Uri %s fcm %s",uri,fcm);
     sprintf(request,"POST %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: esp-idf/1.0 esp32\r\nContent-Type: application/json; UTF-8\r\nContent-Length: %d\r\nAuthorization: Bearer ",uri,fcm,content_len);
     int request_len=strlen(request);
-    if(getAccessToken(&request[request_len], hsz-request_len))
+//    ESP_LOGI(TAG,"Request len=%d",request_len);
+    if((access_token=getAccessToken())==NULL)
     {
     	ESP_LOGE(TAG,"Error getAccessToken");
     	goto exit;
     }
+    strcat(request,access_token);
     request_len=strlen(request);
     strcpy(&request[request_len],"\r\n\r\n");
     ESP_LOGI(TAG,"Request=%s",request);
 
-//    wolfSSL_Debugging_ON();
-
-    if ((ret = resolve_host_name(fcm, strlen(fcm), &addrinfo)) != ESP_OK) {
-        goto exit;
-    }
-    /* create and set up socket */
-    sockfd = socket(addrinfo->ai_family, addrinfo->ai_socktype, addrinfo->ai_protocol);
-    servAddr = (struct sockaddr_in *)addrinfo->ai_addr;
-    servAddr->sin_port = htons(443);
-    ESP_LOGI(TAG,"Host=%s Ip-address=%s",fcm, inet_ntoa(servAddr->sin_addr.s_addr));
-
-
-    /* connect to socket */
-    ret=connect(sockfd,  servAddr, addrinfo->ai_addrlen);
-    if(ret<0)
-    {
-    	ESP_LOGE(TAG,"Socket not connected");
-    	goto exit;
-    }
-
-    /* initialize wolfssl library */
-    wolfSSL_Init();
-    method = wolfTLSv1_3_client_method(); /* use TLS v1.2 or 1.3 */
-
-    /* make new ssl context */
-    if ( (ctx = wolfSSL_CTX_new(method)) == NULL) {
-    	ESP_LOGE(TAG,"Err ctx method");
-    	goto exit;
-    }
-
-    wolfSSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, NULL);
-    ret=wolfSSL_CTX_load_verify_locations(ctx, NULL, "/sdcard/certs");
-    if(ret<0)
-    {
-    	ESP_LOGE(TAG,"Error loading cert %d", ret);
-    	goto exit;
-    }
-/*    ret=wolfSSL_CTX_trust_peer_cert(ctx,"/sdcard/trusted/oauth2.cer",SSL_FILETYPE_ASN1);
-    if(ret<0)
-    {
-    	ESP_LOGE(TAG,"Error loading trusted %d", wolfSSL_get_error(ssl,ret));
-    	goto exit;
-    }*/
-    ret=wolfSSL_CTX_UseSNI(ctx, WOLFSSL_SNI_HOST_NAME, (void *) fcm, XSTRLEN(fcm));
-    if(ret<0)
-    {
-    	ESP_LOGE(TAG,"Error loading hostName %d", ret);
-    	goto exit;
-    } else ESP_LOGI(TAG,"Set sni for host %s",fcm);
-
-    /* make new wolfSSL struct */
-    if ( (ssl = wolfSSL_new(ctx)) == NULL) {
-     	ESP_LOGE(TAG,"Err create ssl");
-     	goto exit;
-    }
-
-    /* Connect wolfssl to the socket, server, then send message */
-    ret=wolfSSL_set_fd(ssl, sockfd);
-    if(ret<0)
-    {
-    	ESP_LOGE(TAG,"Error set fd");
-    	goto exit;
-    }
-
-    wolfSSL_check_domain_name (ssl, fcm);
-
-    ret=wolfSSL_connect(ssl);
-    if(ret<0)
-    {
-    	ESP_LOGE(TAG,"Error connect %d",ret);
-    	goto exit;
-    }
+    sockfd=my_connect(fcm,&ssl);
+    if(sockfd<0) goto exit;
 
     ret=rawWrite(ssl,request,strlen(request));
     free(request);
@@ -808,23 +146,433 @@ static void sendMessageTask(void)
 exit:
 	if(content!=NULL) free(content);
 	if(request!=NULL) free(request);
-    if(ssl!=NULL) wolfSSL_free(ssl);
-    if(ctx!=NULL) wolfSSL_CTX_free(ctx);
-    wolfSSL_Cleanup();
-    if(sockfd!=-1) close(sockfd);
+	my_disconnect(sockfd,ssl);
     ESP_LOGI(TAG,"exit from sendMessageTask FREE=%d",xPortGetFreeHeapSize());
-/*	while(1)
-	{
-		vTaskDelay(86400000);
-	}*/
-    /*for (int countdown = 10; countdown >= 0; countdown--) {
-        ESP_LOGI(TAG, "%d...", countdown);
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
-    }*/
-    smt_running=0;
     vTaskDelete(NULL);
 }
 
+
+char* getDGKey(void)
+{
+    char* request=NULL;
+    char uri[128];
+    int sockfd=-1;
+    WOLFSSL* ssl=NULL;
+    int ret=-1;
+    int content_len;
+    int req_len;
+    char* dgkey=NULL;
+    char* err_str=NULL;
+    char* data=NULL;
+	char dgkey_name[MAX_DGKEY_NAME];
+
+	esp_err_t err=Read_str_params("DGKey_name", dgkey_name, MAX_DGKEY_NAME);
+	if(err!=ESP_OK)
+	{
+		ESP_LOGE(TAG,"No DGKey name found");
+		return NULL;
+	}
+	strcpy(uri,"https://");
+    strcat(uri,fcm);
+	strcat(uri,"/fcm/notification?notification_key_name=");
+	strcat(uri,dgkey_name);
+    request=malloc(1024);
+	sprintf(request,"GET %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: esp-idf/1.0 esp32\r\nContent-Type: application/json\r\nproject_id: %s\r\nAuthorization: key=%s",uri,fcm,sender_id,key);
+    strcat(request,"\r\n\r\n");
+    req_len=strlen(request);
+
+    sockfd=my_connect(fcm,&ssl);
+    if(sockfd<0) goto exit;
+
+    ESP_LOGI(TAG,"Request len %d Request=%s",req_len,request);
+    ret=rawWrite(ssl,request,req_len);
+    free(request);
+    request=NULL;
+    if(ret<0) goto exit;
+
+    if((data=rawRead(ssl, &content_len))!=NULL)
+    {
+    	data[content_len]=0;
+    	ESP_LOGI(TAG, "Received data=%s",data);
+    }
+    else
+    {
+    	ESP_LOGE(TAG,"No response!!!");
+    	ret=-1;
+    	goto exit;
+    }
+	cJSON *json_content = cJSON_Parse(data);
+	if(json_content!=NULL)
+	{
+		cJSON* par = cJSON_GetObjectItemCaseSensitive(json_content,"notification_key");
+		if(par!=NULL && cJSON_IsString(par) && par->valuestring!=NULL )
+		{
+			int blen=strlen(par->valuestring);
+			dgkey=malloc(blen+1);
+			strcpy(dgkey,par->valuestring);
+			ESP_LOGI(TAG,"dgkey=%s",dgkey);
+			ret=0;
+		}
+		par = cJSON_GetObjectItemCaseSensitive(json_content,"error");
+		if(par!=NULL && cJSON_IsString(par) && par->valuestring!=NULL )
+		{
+			ESP_LOGI(TAG,"error=%s",par->valuestring);
+			ret=-1;
+		}
+	}
+
+exit:
+    if(data!=NULL) free(data);
+    if(request!=NULL) free(request);
+	my_disconnect(sockfd,ssl);
+	if(ret<0)
+	{
+		if(dgkey!=NULL) free(dgkey);
+		return NULL;
+	}
+	return dgkey;
+}
+
+char* createDGKey(char* device_token)
+{
+    char* request;
+    char* content;
+    int csz=3000;
+    int hsz=1024;
+    char uri[128];
+    int sockfd=-1;
+    WOLFSSL* ssl=NULL;
+    int ret=-1;
+    int content_len;
+    int req_len;
+    char* dgkey=NULL;
+    char* data=NULL;
+	char dgkey_name[MAX_DGKEY_NAME];
+
+	if(device_token==NULL) return NULL;
+	esp_err_t err=Read_str_params("DGKey_name", dgkey_name, MAX_DGKEY_NAME);
+	if(err!=ESP_OK)
+	{
+		ESP_LOGE(TAG,"No DGKey name found");
+		return NULL;
+	}
+    content=malloc(csz);
+	strcpy(content,"{\"operation\": \"create\",\"notification_key_name\": \"");
+	strcat(content,dgkey_name);
+	strcat(content,"\",\"registration_ids\": [\"");
+	strcat(content,device_token);
+	strcat(content,"\"]}\r\n");
+	ESP_LOGI(TAG,"Content=%s",content);
+	content_len=strlen(content);
+	strcpy(uri,"https://");
+    strcat(uri,fcm);
+	strcat(uri,"/fcm/notification");
+    request=malloc(hsz);
+	sprintf(request,"POST %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: esp-idf/1.0 esp32\r\nContent-Type: application/json\r\nContent-Length: %d\r\nproject_id: %s\r\nAuthorization: key=%s",uri,fcm,content_len,sender_id,key);
+    strcat(request,"\r\n\r\n");
+    req_len=strlen(request);
+    ESP_LOGI(TAG,"Request=%s",request);
+
+    sockfd=my_connect(fcm,&ssl);
+    if(sockfd<0)
+    {
+    	ret=-1;
+    	goto exit;
+    }
+
+    ret=rawWrite(ssl,request,req_len);
+    free(request);
+    request=NULL;
+    if(ret<0) goto exit;
+
+    ret=rawWrite(ssl, content, content_len);
+    free(content);
+    content=NULL;
+    if(ret<0) goto exit;
+
+    content_len=0;
+    if((data=rawRead(ssl, &content_len))!=NULL)
+    {
+    	data[content_len]=0;
+    	ESP_LOGI(TAG, "Received data=%s",data);
+    }
+    else
+    {
+    	ESP_LOGE(TAG,"No response!!! Error creating dgkey");
+    	goto exit;
+    }
+
+	cJSON *json_content = cJSON_Parse(data);
+	if(json_content!=NULL)
+	{
+		cJSON* par = cJSON_GetObjectItemCaseSensitive(json_content,"notification_key");
+		if(par!=NULL && cJSON_IsString(par) && par->valuestring!=NULL )
+		{
+			int blen=strlen(par->valuestring);
+			dgkey=malloc(blen+1);
+			strcpy(dgkey,par->valuestring);
+			ESP_LOGI(TAG,"dgkey=%s",dgkey);
+			ret=0;
+		}
+		else
+		{
+			ESP_LOGE(TAG,"Error parsing dgkey");
+			ret=-1;
+		}
+		cJSON_Delete(json_content);
+	}
+exit:
+    if(data!=NULL) free(data);
+	if(content!=NULL) free(content);
+	if(request!=NULL) free(request);
+	my_disconnect(sockfd,ssl);
+	if(ret<0)
+	{
+		if(dgkey!=NULL) free(dgkey);
+		return NULL;
+	}
+	return dgkey;
+}
+
+
+
+//{"notification_key":"APA91bGXB01T4gG7hypoKNV0GK12TXoZsPfkBqG1kuOCmUFeJo3kGTRPo-MvkRh-ZrDd9t-iuKHddUh9q9qeAJUjrZylvYkztCBguc8pq04sds9dxTFXnq3Hhqt4pbeA7fn0ue7kdipJ"}
+//{"notification_key":"APA91bF7IXFWrIr0ZIchOWkvgQ5BTj7sDVcKGxexMsfmEkmATKWQ1mAI4FkLQO8Z7rNh7wWD2HlNLL_-S1qSbGUROXBx60VzxJJ3C9BhmrcZvYwJGbRozTPtG7JUJ9u6viT1j1MKI23b"}
+//{"notification_key":"APA91bHI3JjqFfHPD9IoWV471fYGx47EjzjdnssZ04jVyx1LByoHeewmSMpngWCVRw3evunMSvVmAjrHQetaDvEYm62qb6MtLCbWsZhom-RYdbUQ4DX1z2fMYqVQZ5WekeAUnwQaFb3w"}
+
+
+char* removeFromDG(const char* device_token)
+{
+    char* request=NULL;
+    char* content;
+    int csz=1024;
+    int hsz=1024;
+    char uri[128];
+    int sockfd=-1;
+    WOLFSSL* ssl=NULL;
+    int ret=-1;
+    int content_len;
+    int req_len;
+    char* newdgkey=NULL;
+    char* data=NULL;
+	char dgkey_name[MAX_DGKEY_NAME];
+	char* dgkey=NULL;
+
+	if(device_token==NULL) return NULL;
+	esp_err_t err=Read_str_params("DGKey_name", dgkey_name, MAX_DGKEY_NAME);
+	if(err!=ESP_OK)
+	{
+		ESP_LOGE(TAG,"No DGKey name found");
+		return NULL;
+	}
+	dgkey=getDGKey();
+	if(dgkey==NULL) return NULL;
+	content=malloc(csz);
+	strcpy(content,"{\"operation\": \"remove\",\"notification_key_name\": \"");
+	strcat(content,dgkey_name);
+	strcat(content,"\",\"notification_key\":\"");
+	strcat(content,dgkey);
+	strcat(content,"\",\"registration_ids\": [\"");
+	strcat(content,device_token);
+	strcat(content,"\"]}\r\n");
+	ESP_LOGI(TAG,"Content=%s",content);
+	content_len=strlen(content);
+	strcpy(uri,"https://");
+    strcat(uri,fcm);
+	strcat(uri,"/fcm/notification");
+    request=malloc(hsz);
+	sprintf(request,"POST %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: esp-idf/1.0 esp32\r\nContent-Type: application/json\r\nContent-Length: %d\r\nproject_id: %s\r\nAuthorization: key=%s",uri,fcm,content_len,sender_id,key);
+    strcat(request,"\r\n\r\n");
+    req_len=strlen(request);
+    ESP_LOGI(TAG,"Request=%s",request);
+
+    sockfd=my_connect(fcm,&ssl);
+    if(sockfd<0) goto exit;
+
+    ret=rawWrite(ssl,request,req_len);
+    free(request);
+    request=NULL;
+    if(ret<0) goto exit;
+
+    ret=rawWrite(ssl, content, content_len);
+    free(content);
+    content=NULL;
+    if(ret<0) goto exit;
+
+    content_len=0;
+    if((data=rawRead(ssl, &content_len))!=NULL)
+    {
+    	data[content_len]=0;
+    	ESP_LOGI(TAG, "Received data=%s",data);
+    }
+    else
+    {
+    	ESP_LOGE(TAG,"No response!!! Error creating dgkey");
+    	goto exit;
+    }
+
+	cJSON *json_content = cJSON_Parse(data);
+	if(json_content!=NULL)
+	{
+		cJSON* par = cJSON_GetObjectItemCaseSensitive(json_content,"notification_key");
+		if(par!=NULL && cJSON_IsString(par) && par->valuestring!=NULL )
+		{
+			int blen=strlen(par->valuestring);
+			newdgkey=malloc(blen+1);
+			strcpy(newdgkey,par->valuestring);
+			ESP_LOGI(TAG,"dgkey=%s",newdgkey);
+			ret=0;
+		}
+		par = cJSON_GetObjectItemCaseSensitive(json_content,"error");
+		if(par!=NULL && cJSON_IsString(par) && par->valuestring!=NULL )
+		{
+			ESP_LOGI(TAG,"error=%s",par->valuestring);
+			ret=-1;
+		}
+		cJSON_Delete(json_content);
+	}
+exit:
+	if(dgkey!=NULL) free(dgkey);
+	if(data!=NULL) free(data);
+	if(content!=NULL) free(content);
+	if(request!=NULL) free(request);
+	my_disconnect(sockfd,ssl);
+	if(ret<0)
+	{
+		if(newdgkey!=NULL) free(newdgkey);
+		return NULL;
+	}
+	return newdgkey;
+
+}
+
+char* addToDG(char* device_token)
+{
+    char* request=NULL;
+    char* content=NULL;
+    int csz=1024;
+    int hsz=1024;
+    char uri[128];
+    int sockfd=-1;
+    WOLFSSL* ssl=NULL;
+    int ret=-1;
+    int content_len;
+    int req_len;
+    char* newdgkey=NULL;
+    char* data=NULL;
+	char dgkey_name[MAX_DGKEY_NAME];
+	char* dgkey=NULL;
+
+	if(device_token==NULL) return NULL;
+	esp_err_t err=Read_str_params("DGKey_name", dgkey_name, MAX_DGKEY_NAME);
+	if(err!=ESP_OK)
+	{
+		ESP_LOGE(TAG,"No DGKey name found");
+		return NULL;
+	}
+	dgkey=getDGKey();
+	if(dgkey==NULL)
+	{
+		dgkey=createDGKey(device_token);
+		if(dgkey==NULL) return NULL;
+		else return dgkey;
+	}
+	content=malloc(csz);
+	strcpy(content,"{\"operation\": \"add\",\"notification_key_name\": \"");
+	strcat(content,dgkey_name);
+	strcat(content,"\",\"notification_key\":\"");
+	strcat(content,dgkey);
+	strcat(content,"\",\"registration_ids\": [\"");
+	strcat(content,device_token);
+	strcat(content,"\"]}\r\n");
+	ESP_LOGI(TAG,"Content=%s",content);
+	content_len=strlen(content);
+	strcpy(uri,"https://");
+    strcat(uri,fcm);
+	strcat(uri,"/fcm/notification");
+    request=malloc(hsz);
+	sprintf(request,"POST %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: esp-idf/1.0 esp32\r\nContent-Type: application/json\r\nContent-Length: %d\r\nproject_id: %s\r\nAuthorization: key=%s",uri,fcm,content_len,sender_id,key);
+    strcat(request,"\r\n\r\n");
+    req_len=strlen(request);
+    ESP_LOGI(TAG,"Request=%s",request);
+
+    sockfd=my_connect(fcm,&ssl);
+    if(sockfd<0)
+    {
+    	ret=-1;
+    	goto exit;
+    }
+
+    ret=rawWrite(ssl,request,req_len);
+    free(request);
+    request=NULL;
+    if(ret<0) goto exit;
+
+    ret=rawWrite(ssl, content, content_len);
+    free(content);
+    content=NULL;
+    if(ret<0) goto exit;
+
+    content_len=0;
+    if((data=rawRead(ssl, &content_len))!=NULL)
+    {
+    	data[content_len]=0;
+    	ESP_LOGI(TAG, "Received data=%s",data);
+    }
+    else
+    {
+    	ESP_LOGE(TAG,"No response!!! Error creating dgkey");
+    	goto exit;
+    }
+
+	cJSON *json_content = cJSON_Parse(data);
+	if(json_content!=NULL)
+	{
+		cJSON* par = cJSON_GetObjectItemCaseSensitive(json_content,"notification_key");
+		if(par!=NULL && cJSON_IsString(par) && par->valuestring!=NULL )
+		{
+			int blen=strlen(par->valuestring);
+			newdgkey=malloc(blen+1);
+			strcpy(newdgkey,par->valuestring);
+			ESP_LOGI(TAG,"dgkey=%s",newdgkey);
+			ret=0;
+		}
+		par = cJSON_GetObjectItemCaseSensitive(json_content,"error");
+		if(par!=NULL && cJSON_IsString(par) && par->valuestring!=NULL )
+		{
+			ESP_LOGI(TAG,"error=%s",par->valuestring);
+			ret=-1;
+		}
+		cJSON_Delete(json_content);
+	}
+exit:
+	if(dgkey!=NULL) free(dgkey);
+	if(data!=NULL) free(data);
+	if(content!=NULL) free(content);
+	if(request!=NULL) free(request);
+	my_disconnect(sockfd,ssl);
+	if(ret<0)
+	{
+		if(newdgkey!=NULL) free(newdgkey);
+		return NULL;
+	}
+	return newdgkey;
+
+
+}
+
+void DGTask(void)
+{
+	char* dgkey=NULL;
+	dgkey=addToDG("fiwiYgJMRqSuowQ72XM_WY:APA91bFe3w-74KeCmZxUtY64g_fO65REkkQI5efwcOYypjsaqZY5x0JRcS0A8Dr3Zm6ha7hgtgSdieyaQ1lRAImC58lVGwLGiGkQjnKd6jD_DrL0TbX5U4i2YIfsGZKzJ-0gC9TdZUS4");
+	dgkey=addToDG("eJ_HGSwFSRKTa2JXtWrzcv:APA91bG6lfzl37qBt1XooXucfLLGBKSatwQMqpdJMlxIFzyo_7f-LIqWAzfIWQ_R39-Dvs95rv2AnHiWUEGgPfcUsll5czM90ndTtMf_1IFqdG9UTDVcTPYwbehTduvNI7_IqzUrUkdQ");
+//	dgkey=removeFromDG("fiwiYgJMRqSuowQ72XM_WY:APA91bFe3w-74KeCmZxUtY64g_fO65REkkQI5efwcOYypjsaqZY5x0JRcS0A8Dr3Zm6ha7hgtgSdieyaQ1lRAImC58lVGwLGiGkQjnKd6jD_DrL0TbX5U4i2YIfsGZKzJ-0gC9TdZUS4");
+	dgkey=removeFromDG("eJ_HGSwFSRKTa2JXtWrzcv:APA91bG6lfzl37qBt1XooXucfLLGBKSatwQMqpdJMlxIFzyo_7f-LIqWAzfIWQ_R39-Dvs95rv2AnHiWUEGgPfcUsll5czM90ndTtMf_1IFqdG9UTDVcTPYwbehTduvNI7_IqzUrUkdQ");
+	dgkey=removeFromDG("eJ_HGSwFSRKTa2JXtWrzcv:APA91bG6lfzl37qBt1XooXucfLLGBKSatwQMqpdJMlxIFzyo_7f-LIqWAzfIWQ_R39-Dvs95rv2AnHiWUEGgPfcUsll5czM90ndTtMf_1IFqdG9UTDVcTPYwbehTduvNI7_IqzUrUkdQ");
+
+	if(dgkey!=NULL) free(dgkey);
+	vTaskDelete(NULL);
+}
 
 TaskHandle_t sendMessage(char* user0, char* messageTitle0, char* messageBody0, char* messageBody1)
 {
@@ -834,8 +582,10 @@ TaskHandle_t sendMessage(char* user0, char* messageTitle0, char* messageBody0, c
 	if(messageBody0[0] && messageBody1[0]) strcat(messageBody," and ");
 	strcat(messageBody,messageBody1);
 	TaskHandle_t xHandle = NULL;
+	TaskHandle_t xHandle1 = NULL;
 	ESP_LOGI(TAG,"Proceeding mes1 %s and mes2 %s to user %s",messageBody0,messageBody1,user0);
 	smt_running=1;
-	xTaskCreatePinnedToCore(sendMessageTask, "https_post_request task", 12000, NULL, 5, &xHandle,0);
+	xTaskCreatePinnedToCore(DGTask, "DG_request task", 12000, NULL, 5, &xHandle1,0);
+//	xTaskCreatePinnedToCore(sendMessageTask, "https_post_request task", 12000, NULL, 5, &xHandle,0);
 	return xHandle;
 }

@@ -89,6 +89,7 @@ const _par_t _pars[]={
 	{PAR_STR,"FirstName1",{.str="Ilya"},"user1 First Name",VISIBLE},
 	{PAR_STR,"LastName1",{.str="Shugalev"},"user1 Last Name",VISIBLE},
 	{PAR_STR,"PWD1",{.str="songsong"},"user1 password",VISIBLE},
+	{PAR_STR,"DGKey_name",{.str="test3Pushexample_dgkey_000"},"Device Group Key Name",VISIBLE},
 	{0,NULL,{0},NULL,HIDDEN}
 };
 

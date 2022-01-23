@@ -53,7 +53,7 @@
 #include "sx1276_hal.h"
 #include "soc/efuse_reg.h"
 #include "soc/apb_ctrl_reg.h"
-#include "message.h"
+#include "access.h"
 #include "esp_smartconfig.h"
 #define LOG_LOCAL_LEVEL ESP_LOG_VERBOSE
 #include "esp_log.h"
@@ -794,7 +794,7 @@ static void system_init()
     ESP_LOGI(TAG,"After fill devices FREE=%d",xPortGetFreeHeapSize());
     get_SHAKey();
     ESP_LOGI(TAG,"After get SHAKey FREE=%d",xPortGetFreeHeapSize());
-    messagingInit();
+    accessInit();
     ESP_LOGI(TAG,"After messagingInit FREE=%d",xPortGetFreeHeapSize());
 //    getAuthToken();
 //    print_SHAKey(shaKey);
