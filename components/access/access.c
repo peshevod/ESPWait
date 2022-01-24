@@ -38,6 +38,8 @@ static char* client_id;
 static char* auth_uri;
 static char* token_uri;
 static char* host;
+char* sender_id;
+char* api_key;
 static const char scope[]="https://www.googleapis.com/auth/firebase.messaging";
 static word32 SIG_LEN=256;
 static char* access_token=NULL;
@@ -166,6 +168,7 @@ static int Sign(const char* body, uint32_t Body_len, uint8_t* b64Sig_buf, word32
 static void JsonParse(const char* json_buf)
 {
     cJSON *par;
+	ESP_LOGI(TAG,"Enter in JsonParse");
 	cJSON *json_content = cJSON_Parse(json_buf);
 	if(json_content!=NULL)
 	{
@@ -175,7 +178,7 @@ static void JsonParse(const char* json_buf)
 			project_id=malloc(strlen(par->valuestring)+1);
 			strcpy(project_id,par->valuestring);
 			ESP_LOGI(TAG,"project_id=%s",project_id);
-		}
+		} else ESP_LOGE(TAG,"error json parse");
 		par = cJSON_GetObjectItemCaseSensitive(json_content,"private_key_id");
 		if(par!=NULL && cJSON_IsString(par) && par->valuestring!=NULL )
 		{
@@ -217,13 +220,27 @@ static void JsonParse(const char* json_buf)
 			*x='/';
 			ESP_LOGI(TAG,"token_uri=%s",token_uri);
 		}
+		par = cJSON_GetObjectItemCaseSensitive(json_content,"sender_id");
+		if(par!=NULL && cJSON_IsString(par) && par->valuestring!=NULL )
+		{
+			sender_id=malloc(strlen(par->valuestring)+1);
+			strcpy(sender_id,par->valuestring);
+			ESP_LOGI(TAG,"sender_id=%s",sender_id);
+		}
+		par = cJSON_GetObjectItemCaseSensitive(json_content,"api_key");
+		if(par!=NULL && cJSON_IsString(par) && par->valuestring!=NULL )
+		{
+			api_key=malloc(strlen(par->valuestring)+1);
+			strcpy(api_key,par->valuestring);
+			ESP_LOGI(TAG,"api_key=%s",api_key);
+		}
 		par = cJSON_GetObjectItemCaseSensitive(json_content,"private_key");
 		if(par!=NULL && cJSON_IsString(par) && par->valuestring!=NULL )
 		{
 			prepareKey(par->valuestring);
 		}
 		cJSON_Delete(json_content);
-	}
+	} else ESP_LOGE(TAG,"Json couldnt parse");
 
 }
 
@@ -453,6 +470,7 @@ exit:
 
 void accessInit(void)
 {
+	ESP_LOGI(TAG,"Enter in accessInit");
 	JsonParse(json_start);
     accessTimer=xTimerCreate("accessTimer", 3600000 / portTICK_PERIOD_MS, pdFALSE, (void*) ACCESS_TIMER, accessReset);
     access_token=NULL;

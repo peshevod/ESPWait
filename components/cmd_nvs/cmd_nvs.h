@@ -98,6 +98,7 @@ esp_err_t Read_eui_params(const char* key, uint8_t* eui);
 esp_err_t Read_str_params(const char* key, char* str, size_t max_len);
 esp_err_t Commit_params(void);
 esp_err_t EraseKey(char* key);
+int isKeyExist(const char* key, const char* testValue);
 //esp_err_t get_Eui(uint8_t n, GenericEui_t* deveui);
 //esp_err_t put_Eui(uint8_t n, GenericEui_t* deveui);
 //uint8_t get_EUI_type(uint8_t n);

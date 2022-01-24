@@ -63,13 +63,13 @@ const _par_t _pars[]={
 	{PAR_EUI64,"Dev1Eui",{.eui={0x20,0x37,0x11,0x32,0x11,0x26,0x00,0x20}}, "Dev1Eui 64",VISIBLE  },
 	{PAR_KEY128,"Dev1AppKey",{.key={0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x09,0x0a,0x0b,0x0c,0x0d,0x0e,0x0f,0x10}}, "Dev1 Application Key 128 bit",VISIBLE  },
 	{PAR_KEY128,"Dev1NwkKey",{.key={0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x09,0x0a,0x0b,0x0c,0x0d,0x0e,0x0f,0x10}}, "Dev1 Network Key 128 bit",VISIBLE  },
-	{PAR_STR,"Dev1Name",{.str="Device1"}, "Dev1 Name",VISIBLE  },
+	{PAR_STR,"Dev1Name",{.str="Дом"}, "Dev1 Name",VISIBLE  },
 	{PAR_EUI64,"Dev1Users",{.eui={0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x00}}, "Users subscribed to device",VISIBLE },
 	{PAR_UI8,"Dev1Version",{ 0 }, "Lorawan Version of Dev: 0 - 1.0, 1 - 1.1",VISIBLE },
 	{PAR_EUI64,"Dev2Eui",{.eui={0x20,0x37,0x11,0x32,0x13,0x08,0x00,0x00}}, "Dev2Eui 64",VISIBLE  },
 	{PAR_KEY128,"Dev2AppKey",{.key={0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x09,0x0a,0x0b,0x0c,0x0d,0x0e,0x0f,0x10}}, "Dev2 Application Key 128 bit",VISIBLE  },
 	{PAR_KEY128,"Dev2NwkKey",{.key={0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x09,0x0a,0x0b,0x0c,0x0d,0x0e,0x0f,0x10}}, "Dev2 Network Key 128 bit",VISIBLE  },
-	{PAR_STR,"Dev2Name",{.str="Device2"}, "Dev2 Name",VISIBLE  },
+	{PAR_STR,"Dev2Name",{.str="Гараж"}, "Dev2 Name",VISIBLE  },
 	{PAR_UI8,"Dev2Version",{ 0 }, "Lorawan Version of Dev: 0 - 1.0, 1 - 1.1",VISIBLE },
 	{PAR_EUI64,"Dev2Users",{.eui={0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x00}}, "Users subscribed to device",VISIBLE },
 	{PAR_EUI64,"Dev3Eui",{.eui={0x20,0x37,0x11,0x32,0x11,0x15,0x00,0x60}}, "Dev3Eui 64",VISIBLE  },
@@ -425,6 +425,29 @@ esp_err_t EraseKey(char* key)
 {
 	nvs_erase_key(nvs,key);
 	return nvs_commit(nvs);
+}
+
+// 0 - key does not exist
+// 1 - key exist and equal test value
+// 2 - key exist and not equal test value
+// 3 - error reading nvs
+
+int isKeyExist(const char* key, const char* testValue)
+{
+	esp_err_t err;
+	size_t len;
+	char* val;
+	int ret;
+	err=nvs_get_str(nvs,key, NULL, &len);
+	if(err==ESP_ERR_NVS_NOT_FOUND) return 0;
+	if(err!=ESP_OK) return -1;
+	val=malloc(len);
+	err=nvs_get_str(nvs,key,val,&len);
+	if(err!=ESP_OK) ret=-1;
+	else if(!strcmp(val,testValue)) ret=1;
+	else ret=2;
+	free(val);
+	return ret;
 }
 
 

@@ -795,7 +795,7 @@ static void system_init()
     get_SHAKey();
     ESP_LOGI(TAG,"After get SHAKey FREE=%d",xPortGetFreeHeapSize());
     accessInit();
-    ESP_LOGI(TAG,"After messagingInit FREE=%d",xPortGetFreeHeapSize());
+    ESP_LOGI(TAG,"After accessInit FREE=%d",xPortGetFreeHeapSize());
 //    getAuthToken();
 //    print_SHAKey(shaKey);
     while(!init_sdmmc())
@@ -826,8 +826,9 @@ static void system_init()
         ESP_LOGI(TAG, "failed to start https server");
     }
 
-//    Write_str_params("ilya_token", "eJ_HGSwFSRKTa2JXtWrzcv:APA91bG6lfzl37qBt1XooXucfLLGBKSatwQMqpdJMlxIFzyo_7f-LIqWAzfIWQ_R39-Dvs95rv2AnHiWUEGgPfcUsll5czM90ndTtMf_1IFqdG9UTDVcTPYwbehTduvNI7_IqzUrUkdQ");
-    Write_str_params("ilya_token", "fiwiYgJMRqSuowQ72XM_WY:APA91bFe3w-74KeCmZxUtY64g_fO65REkkQI5efwcOYypjsaqZY5x0JRcS0A8Dr3Zm6ha7hgtgSdieyaQ1lRAImC58lVGwLGiGkQjnKd6jD_DrL0TbX5U4i2YIfsGZKzJ-0gC9TdZUS4");
+    EraseKey("ilya_token");
+    Write_str_params("ilya_token1", "eJ_HGSwFSRKTa2JXtWrzcv:APA91bG6lfzl37qBt1XooXucfLLGBKSatwQMqpdJMlxIFzyo_7f-LIqWAzfIWQ_R39-Dvs95rv2AnHiWUEGgPfcUsll5czM90ndTtMf_1IFqdG9UTDVcTPYwbehTduvNI7_IqzUrUkdQ");
+    Write_str_params("ilya_token0", "fiwiYgJMRqSuowQ72XM_WY:APA91bFe3w-74KeCmZxUtY64g_fO65REkkQI5efwcOYypjsaqZY5x0JRcS0A8Dr3Zm6ha7hgtgSdieyaQ1lRAImC58lVGwLGiGkQjnKd6jD_DrL0TbX5U4i2YIfsGZKzJ-0gC9TdZUS4");
     Commit_params();
     char xxx[64];
     uint32_t now=(uint32_t)time(NULL);

@@ -432,6 +432,7 @@ LorawanError_t LORAX_RxDone (uint8_t* buffer, uint8_t bufferLength, int16_t rssi
     NetworkSession_t* networkSession;
     uint8_t sessionNumber;
     uint32_t exp;
+    uint8_t repeat;
 
     ESP_LOGI(TAG,"Received frame type=0x%02x",(buffer[0]&0xE0)>>5);
     for(uint8_t k=0;k<bufferLength;k++) printf(" %02X",buffer[k]);
@@ -531,6 +532,7 @@ LorawanError_t LORAX_RxDone (uint8_t* buffer, uint8_t bufferLength, int16_t rssi
         }
 
 //        ESP_LOGI(TAG,"hdr->fcnt=%d FCntUp=%d sizeof Hdr_t=%d size FCtrl_t %d",hdr->fCnt,networkSession->FCntUp.members.valueLow,sizeof(Hdr_t),sizeof(FCtrl_t));
+        repeat=0;
         if (hdr->fCnt >= networkSession->FCntUp.members.valueLow)
         {
             if ((hdr->fCnt - networkSession->FCntUp.members.valueLow) > loRa.protocolParameters.maxFcntGap) //if this difference is greater than the value of max_fct_gap then too many data frames have been lost then subsequesnt will be discarded
@@ -540,6 +542,7 @@ LorawanError_t LORAX_RxDone (uint8_t* buffer, uint8_t bufferLength, int16_t rssi
             }
             else
             {
+            	if(hdr->fCnt == networkSession->FCntUp.members.valueLow) repeat=1;
             	networkSession->FCntUp.members.valueLow = hdr->fCnt;  //frame counter received is OK, so the value received from the server is kept in sync with the value stored in the end device
             }
         }
@@ -589,7 +592,7 @@ LorawanError_t LORAX_RxDone (uint8_t* buffer, uint8_t bufferLength, int16_t rssi
         		networkSession->currentState.t=t;
         		networkSession->currentState.local_snr=snr;
         		networkSession->currentState.local_rssi=rssi;
-        		xTaskCreatePinnedToCore(writeData,"writeData",4096,networkSession,tskIDLE_PRIORITY+2,&networkSession->app,0);
+        		if(!repeat) xTaskCreatePinnedToCore(writeData,"writeData",4096,networkSession,tskIDLE_PRIORITY+2,&networkSession->app,0);
         	}
         }
         if(mhdr.bits.mType == FRAME_TYPE_DATA_UNCONFIRMED_UP && !networkSession->flags.REQUEST_SEND_ANSWER) xTimerStop(networkSession->sendAnswerTimerId->timer, 0);

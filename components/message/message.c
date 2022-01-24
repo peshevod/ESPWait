@@ -37,24 +37,17 @@ extern const char json_end[] 	asm("_binary_ServiceAccount_json_end");
 static const char TAG[]="message.c";
 RsaKey         rsaKey;
 extern char *project_id;
-//char *private_key_id;
-//char* client_email;
-//char* client_id;
-//char* auth_uri;
-//char* token_uri;
-//char* host;
-//const char scope[]="https://www.googleapis.com/auth/firebase.messaging";
-//word32 SIG_LEN=256;
-char* access_token;
+extern char* sender_id;
+extern char* api_key;
 char user[USERNAME_MAX];
 char* messageTitle;
 char messageBody[128];
-uint8_t message_sent;
-uint8_t message_sending=0;
-uint8_t smt_running=0;
+//uint8_t message_sent;
+//uint8_t message_sending=0;
+//uint8_t smt_running=0;
 const char fcm[]="fcm.googleapis.com";
-const char sender_id[]="678314569448";
-const char key[]="AAAAne6y7ug:APA91bGrGmqtaMj-hrHyF3S4rANa5ph5Po7C9zvaJnH2C3LbqtSNpeVcboJLZqZcFbyEz1P0-kPcd-ko3I7vFeviI54sN-HukhA0_ZMrbL133NAD1_QIEz7GEzSRZJKM6PGg58HBfTyd";
+//const char sender_id[]="678314569448";
+//const char key[]="AAAAne6y7ug:APA91bGrGmqtaMj-hrHyF3S4rANa5ph5Po7C9zvaJnH2C3LbqtSNpeVcboJLZqZcFbyEz1P0-kPcd-ko3I7vFeviI54sN-HukhA0_ZMrbL133NAD1_QIEz7GEzSRZJKM6PGg58HBfTyd";
 
 
 int myver(int preverify, WOLFSSL_X509_STORE_CTX* store)
@@ -69,7 +62,7 @@ static void sendMessageTask(void)
     char* request=NULL;
 //	getAccessToken(NULL,0);
 //	goto exit;
-    char uname[USERNAME_MAX+7];
+    char uname[USERNAME_MAX+8];
     int csz=3000;
     int hsz=2048;
     int content_len;
@@ -79,69 +72,64 @@ static void sendMessageTask(void)
     esp_err_t err;
     char* access_token;
 	char uri[128];
+	char* dgkey;
+	char user_token[MAX_DEVICE_TOKEN_LENGTH];
+	int request_len;
+	char* data;
 
     ESP_LOGI(TAG,"Begin SendMessageTask");
 
-    content=malloc(csz);
-	strcpy(content,"{\"message\":{\"token\":\"");
-	strcpy(uname,user);
-	strcat(uname,"_token");
-//	ESP_LOGI(TAG,"user token name %s",uname);
-	int l=strlen(content);
-	if((err=Read_str_params(uname,&content[l], csz-l))!=ESP_OK)
-	{
-		ESP_LOGE(TAG,"Error reading user token %s", esp_err_to_name(err));
-		goto exit;
-	}
-    ESP_LOGI(TAG,"User token=%s",&content[l]);
-	strcat(content,"\",\"notification\":{\"body\":\"");
-	strcat(content, messageBody);
-	strcat(content,"\",\"title\":\"");
-	strcat(content, messageTitle);
-	strcat(content, "\"}}}");
-	ESP_LOGI(TAG,"Content=%s",content);
-	content_len=strlen(content);
-	request=malloc(hsz);
-//	ESP_LOGI(TAG,"fcm %s",fcm);
-	strcpy(uri,fcm);
-	strcat(uri,"/v1/projects/");
-	strcat(uri,project_id);
-	strcat(uri,"/messages:send");
-//	ESP_LOGI(TAG,"Uri %s fcm %s",uri,fcm);
-    sprintf(request,"POST %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: esp-idf/1.0 esp32\r\nContent-Type: application/json; UTF-8\r\nContent-Length: %d\r\nAuthorization: Bearer ",uri,fcm,content_len);
-    int request_len=strlen(request);
-//    ESP_LOGI(TAG,"Request len=%d",request_len);
     if((access_token=getAccessToken())==NULL)
     {
     	ESP_LOGE(TAG,"Error getAccessToken");
     	goto exit;
     }
-    strcat(request,access_token);
-    request_len=strlen(request);
-    strcpy(&request[request_len],"\r\n\r\n");
-    ESP_LOGI(TAG,"Request=%s",request);
+    content=malloc(csz);
+	request=malloc(hsz);
+	strcpy(uri,fcm);
+	strcat(uri,"/v1/projects/");
+	strcat(uri,project_id);
+	strcat(uri,"/messages:send");
 
-    sockfd=my_connect(fcm,&ssl);
-    if(sockfd<0) goto exit;
+	sockfd=my_connect(fcm,&ssl);
+	if(sockfd<0) goto exit;
 
-    ret=rawWrite(ssl,request,strlen(request));
-    free(request);
-    request=NULL;
-    if(ret<0) goto exit;
+	uint8_t j=0;
+	for(uint8_t i=0;i<10;i++)
+	{
+		strcpy(content,"{\"message\":{\"token\":\"");
+		sprintf(uname,"%s_token%d",user,i);
+		if((err=Read_str_params(uname, user_token, MAX_DEVICE_TOKEN_LENGTH))!=ESP_OK) continue;
+		strcat(content,user_token);
+		strcat(content,"\",\"notification\":{\"body\":\"");
+		strcat(content, messageBody);
+		strcat(content,"\",\"title\":\"");
+		strcat(content, messageTitle);
+		strcat(content, "\"}}}");
+		ESP_LOGI(TAG,"Content=%s",content);
+		content_len=strlen(content);
+		sprintf(request,"POST %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: esp-idf/1.0 esp32\r\nContent-Type: application/json; UTF-8\r\nContent-Length: %d\r\nAuthorization: Bearer ",uri,fcm,content_len);
+//    ESP_LOGI(TAG,"Request len=%d",request_len);
+		strcat(request,access_token);
+		strcat(request,"\r\n\r\n");
+		request_len=strlen(request);
+		ESP_LOGI(TAG,"Request=%s",request);
+		ESP_LOGI(TAG,"Content=%s",content);
 
-    ret=rawWrite(ssl, content, content_len);
-    free(content);
-    content=NULL;
-    if(ret<0) goto exit;
+		ret=rawWrite(ssl,request,strlen(request));
+		if(ret<0) continue;
 
-    content_len=0;
-    char* data;
-    if((data=rawRead(ssl, &content_len))!=NULL)
-    {
-    	data[content_len]=0;
-    	ESP_LOGI(TAG, "Received data=%s",data);
-    } else ESP_LOGE(TAG,"No response!!!");
-    free(data);
+		ret=rawWrite(ssl, content, content_len);
+		if(ret<0) continue;
+
+		content_len=0;
+		if((data=rawRead(ssl, &content_len))!=NULL)
+		{
+			data[content_len]=0;
+			ESP_LOGI(TAG, "Received data=%s",data);
+		} else ESP_LOGE(TAG,"No response!!!");
+		if(data!=NULL) free(data);
+	}
 
 exit:
 	if(content!=NULL) free(content);
@@ -165,6 +153,7 @@ char* getDGKey(void)
     char* err_str=NULL;
     char* data=NULL;
 	char dgkey_name[MAX_DGKEY_NAME];
+	char* access_token;
 
 	esp_err_t err=Read_str_params("DGKey_name", dgkey_name, MAX_DGKEY_NAME);
 	if(err!=ESP_OK)
@@ -176,8 +165,14 @@ char* getDGKey(void)
     strcat(uri,fcm);
 	strcat(uri,"/fcm/notification?notification_key_name=");
 	strcat(uri,dgkey_name);
-    request=malloc(1024);
-	sprintf(request,"GET %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: esp-idf/1.0 esp32\r\nContent-Type: application/json\r\nproject_id: %s\r\nAuthorization: key=%s",uri,fcm,sender_id,key);
+    request=malloc(2048);
+    if((access_token=getAccessToken())==NULL)
+    {
+    	ESP_LOGE(TAG,"Error getAccessToken");
+    	goto exit;
+    }
+    sprintf(request,"GET %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: esp-idf/1.0 esp32\r\nContent-Type: application/json\r\nproject_id: %s\r\nAuthorization: key=%s",uri,fcm,sender_id,api_key);
+//    sprintf(request,"GET %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: esp-idf/1.0 esp32\r\nContent-Type: application/json\r\nAuthorization: Bearer %s",uri,fcm,sender_id,access_token);
     strcat(request,"\r\n\r\n");
     req_len=strlen(request);
 
@@ -268,7 +263,7 @@ char* createDGKey(char* device_token)
     strcat(uri,fcm);
 	strcat(uri,"/fcm/notification");
     request=malloc(hsz);
-	sprintf(request,"POST %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: esp-idf/1.0 esp32\r\nContent-Type: application/json\r\nContent-Length: %d\r\nproject_id: %s\r\nAuthorization: key=%s",uri,fcm,content_len,sender_id,key);
+	sprintf(request,"POST %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: esp-idf/1.0 esp32\r\nContent-Type: application/json\r\nContent-Length: %d\r\nproject_id: %s\r\nAuthorization: key=%s",uri,fcm,content_len,sender_id,api_key);
     strcat(request,"\r\n\r\n");
     req_len=strlen(request);
     ESP_LOGI(TAG,"Request=%s",request);
@@ -336,11 +331,6 @@ exit:
 
 
 
-//{"notification_key":"APA91bGXB01T4gG7hypoKNV0GK12TXoZsPfkBqG1kuOCmUFeJo3kGTRPo-MvkRh-ZrDd9t-iuKHddUh9q9qeAJUjrZylvYkztCBguc8pq04sds9dxTFXnq3Hhqt4pbeA7fn0ue7kdipJ"}
-//{"notification_key":"APA91bF7IXFWrIr0ZIchOWkvgQ5BTj7sDVcKGxexMsfmEkmATKWQ1mAI4FkLQO8Z7rNh7wWD2HlNLL_-S1qSbGUROXBx60VzxJJ3C9BhmrcZvYwJGbRozTPtG7JUJ9u6viT1j1MKI23b"}
-//{"notification_key":"APA91bHI3JjqFfHPD9IoWV471fYGx47EjzjdnssZ04jVyx1LByoHeewmSMpngWCVRw3evunMSvVmAjrHQetaDvEYm62qb6MtLCbWsZhom-RYdbUQ4DX1z2fMYqVQZ5WekeAUnwQaFb3w"}
-
-
 char* removeFromDG(const char* device_token)
 {
     char* request=NULL;
@@ -381,7 +371,7 @@ char* removeFromDG(const char* device_token)
     strcat(uri,fcm);
 	strcat(uri,"/fcm/notification");
     request=malloc(hsz);
-	sprintf(request,"POST %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: esp-idf/1.0 esp32\r\nContent-Type: application/json\r\nContent-Length: %d\r\nproject_id: %s\r\nAuthorization: key=%s",uri,fcm,content_len,sender_id,key);
+	sprintf(request,"POST %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: esp-idf/1.0 esp32\r\nContent-Type: application/json\r\nContent-Length: %d\r\nproject_id: %s\r\nAuthorization: key=%s",uri,fcm,content_len,sender_id,api_key);
     strcat(request,"\r\n\r\n");
     req_len=strlen(request);
     ESP_LOGI(TAG,"Request=%s",request);
@@ -491,7 +481,7 @@ char* addToDG(char* device_token)
     strcat(uri,fcm);
 	strcat(uri,"/fcm/notification");
     request=malloc(hsz);
-	sprintf(request,"POST %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: esp-idf/1.0 esp32\r\nContent-Type: application/json\r\nContent-Length: %d\r\nproject_id: %s\r\nAuthorization: key=%s",uri,fcm,content_len,sender_id,key);
+	sprintf(request,"POST %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: esp-idf/1.0 esp32\r\nContent-Type: application/json\r\nContent-Length: %d\r\nproject_id: %s\r\nAuthorization: key=%s",uri,fcm,content_len,sender_id,api_key);
     strcat(request,"\r\n\r\n");
     req_len=strlen(request);
     ESP_LOGI(TAG,"Request=%s",request);
@@ -564,11 +554,12 @@ exit:
 void DGTask(void)
 {
 	char* dgkey=NULL;
+	dgkey=getDGKey();
 	dgkey=addToDG("fiwiYgJMRqSuowQ72XM_WY:APA91bFe3w-74KeCmZxUtY64g_fO65REkkQI5efwcOYypjsaqZY5x0JRcS0A8Dr3Zm6ha7hgtgSdieyaQ1lRAImC58lVGwLGiGkQjnKd6jD_DrL0TbX5U4i2YIfsGZKzJ-0gC9TdZUS4");
 	dgkey=addToDG("eJ_HGSwFSRKTa2JXtWrzcv:APA91bG6lfzl37qBt1XooXucfLLGBKSatwQMqpdJMlxIFzyo_7f-LIqWAzfIWQ_R39-Dvs95rv2AnHiWUEGgPfcUsll5czM90ndTtMf_1IFqdG9UTDVcTPYwbehTduvNI7_IqzUrUkdQ");
 //	dgkey=removeFromDG("fiwiYgJMRqSuowQ72XM_WY:APA91bFe3w-74KeCmZxUtY64g_fO65REkkQI5efwcOYypjsaqZY5x0JRcS0A8Dr3Zm6ha7hgtgSdieyaQ1lRAImC58lVGwLGiGkQjnKd6jD_DrL0TbX5U4i2YIfsGZKzJ-0gC9TdZUS4");
-	dgkey=removeFromDG("eJ_HGSwFSRKTa2JXtWrzcv:APA91bG6lfzl37qBt1XooXucfLLGBKSatwQMqpdJMlxIFzyo_7f-LIqWAzfIWQ_R39-Dvs95rv2AnHiWUEGgPfcUsll5czM90ndTtMf_1IFqdG9UTDVcTPYwbehTduvNI7_IqzUrUkdQ");
-	dgkey=removeFromDG("eJ_HGSwFSRKTa2JXtWrzcv:APA91bG6lfzl37qBt1XooXucfLLGBKSatwQMqpdJMlxIFzyo_7f-LIqWAzfIWQ_R39-Dvs95rv2AnHiWUEGgPfcUsll5czM90ndTtMf_1IFqdG9UTDVcTPYwbehTduvNI7_IqzUrUkdQ");
+//	dgkey=removeFromDG("eJ_HGSwFSRKTa2JXtWrzcv:APA91bG6lfzl37qBt1XooXucfLLGBKSatwQMqpdJMlxIFzyo_7f-LIqWAzfIWQ_R39-Dvs95rv2AnHiWUEGgPfcUsll5czM90ndTtMf_1IFqdG9UTDVcTPYwbehTduvNI7_IqzUrUkdQ");
+//	dgkey=removeFromDG("eJ_HGSwFSRKTa2JXtWrzcv:APA91bG6lfzl37qBt1XooXucfLLGBKSatwQMqpdJMlxIFzyo_7f-LIqWAzfIWQ_R39-Dvs95rv2AnHiWUEGgPfcUsll5czM90ndTtMf_1IFqdG9UTDVcTPYwbehTduvNI7_IqzUrUkdQ");
 
 	if(dgkey!=NULL) free(dgkey);
 	vTaskDelete(NULL);
@@ -584,8 +575,7 @@ TaskHandle_t sendMessage(char* user0, char* messageTitle0, char* messageBody0, c
 	TaskHandle_t xHandle = NULL;
 	TaskHandle_t xHandle1 = NULL;
 	ESP_LOGI(TAG,"Proceeding mes1 %s and mes2 %s to user %s",messageBody0,messageBody1,user0);
-	smt_running=1;
-	xTaskCreatePinnedToCore(DGTask, "DG_request task", 12000, NULL, 5, &xHandle1,0);
-//	xTaskCreatePinnedToCore(sendMessageTask, "https_post_request task", 12000, NULL, 5, &xHandle,0);
+//	xTaskCreatePinnedToCore(DGTask, "DG_request task", 12000, NULL, 5, &xHandle1,0);
+	xTaskCreatePinnedToCore(sendMessageTask, "https_post_request task", 12000, NULL, 5, &xHandle,0);
 	return xHandle;
 }

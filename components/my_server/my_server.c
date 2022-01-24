@@ -637,7 +637,8 @@ static esp_err_t monitor_post_handler(httpd_req_t *req)
     char user[USERNAME_MAX];
     char role[ROLENAME_MAX];
     esp_err_t err=ESP_OK;
-    char uname[USERNAME_MAX+7];
+    char uname[USERNAME_MAX+8];
+    char uname_free[USERNAME_MAX+8];
 
     ESP_LOGI(TAG,"POST monitor/* handler");
 	print_headers(req);
@@ -663,10 +664,19 @@ static esp_err_t monitor_post_handler(httpd_req_t *req)
     	}
     	token[req->content_len]=0;
     	ESP_LOGI(TAG,"Get content=%s",token);
-    	strcpy(uname,user);
-    	strcat(uname,"_token");
-    	Write_str_params(uname,token);
-    	Commit_params();
+    	uint8_t found=0;
+    	uname_free[0]=0;
+    	for(uint8_t i=0;i<10;i++)
+    	{
+    		sprintf(uname,"%s_token%d",user,i);
+    		if((found=isKeyExist(uname,token))==1) break;
+    		if(found==0 && uname_free[0]==0) strcpy(uname_free,uname);
+    	}
+    	if(found!=1)
+    	{
+			Write_str_params(uname_free,token);
+			Commit_params();
+    	}
     	free(token);
      }
     httpd_resp_send(req, NULL,0);
