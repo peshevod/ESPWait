@@ -17,6 +17,7 @@ char* getDGKey(void);
 char* createDGKey(char* device_token);
 char* removeFromDG(const char* device_token);
 char* addToDG(char* device_token);
+char* w1251toutf(char* w1251);
 
 #ifdef __cplusplus
 }

@@ -44,7 +44,7 @@ esp_err_t resolve_host_name(const char *host, size_t hostlen, struct addrinfo **
         return ESP_ERR_NO_MEM;
     }
 
-    ESP_LOGD(TAG, "host:%s: strlen %lu", use_host, (unsigned long)hostlen);
+//    ESP_LOGD(TAG, "host:%s: strlen %lu", use_host, (unsigned long)hostlen);
     if (getaddrinfo(use_host, NULL, &hints, address_info)) {
         ESP_LOGE(TAG, "couldn't get ip addr for :%s:", use_host);
         free(use_host);
@@ -97,11 +97,11 @@ char* rawRead(WOLFSSL* ssl, int* content_len)
 		}
 
 		if (ret == 0) {
-			ESP_LOGI(TAG, "connection closed err=%d", wolfSSL_get_error(ssl,ret));
+			ESP_LOGE(TAG, "connection closed err=%d", wolfSSL_get_error(ssl,ret));
 			return data;
 		}
 
-		int ij=0;
+/*		int ij=0;
 		char ix[33];
 		for(int ii=offset;ii<offset+ret;ii++)
 		{
@@ -118,10 +118,10 @@ char* rawRead(WOLFSSL* ssl, int* content_len)
 		{
 			ix[ij]=0;
 			printf(" %s\n",ix);
-		}
+		}*/
 
 		len = ret+offset;
-		ESP_LOGI(TAG, "%d bytes read", len);
+//		ESP_LOGI(TAG, "%d bytes read", len);
 
 		for (int i = 0; i < len; i++)
 		{
@@ -169,12 +169,12 @@ char* rawRead(WOLFSSL* ssl, int* content_len)
 							if(start_len)
 							{
 								memcpy(&chunksz[chunksz_len],start,start_len);  // copy chunk size string chunksz
-								ESP_LOGI(TAG," Chunk size %s",chunksz);
+//								ESP_LOGI(TAG," Chunk size %s",chunksz);
 								sscanf(chunksz,"%x",&c); // parse size of chunk
 //								if(c==0) return data;
 								count=0;					//transfer to chunk data mode
 								chunk_len=0;
-								ESP_LOGI(TAG,"Chunk bytes %d",c);
+//								ESP_LOGI(TAG,"Chunk bytes %d",c);
 								chunksz_len=0;	// zero chunksz_len
 							}
 						}
@@ -185,7 +185,7 @@ char* rawRead(WOLFSSL* ssl, int* content_len)
 							*content_len+= c<len ? c : len ; // calculate new content length
 							chunk_len+= c<len ? c : len ;
 							count= chunk_len<c ? 0 : 1; // transfer to chunk size mode if all chunk data copied
-							ESP_LOGI(TAG,"copy %d bytes, count after %d",c,count);
+//							ESP_LOGI(TAG,"copy %d bytes, count after %d",c,count);
 						}
 					}
 					else
@@ -246,7 +246,7 @@ int rawWrite(WOLFSSL* ssl, char* buf, int len)
 								 &buf[written_bytes],
 								 len-written_bytes);
 		if (ret >= 0) {
-			ESP_LOGI(TAG, "%d header bytes written", ret);
+//			ESP_LOGI(TAG, "%d header bytes written", ret);
 			written_bytes += ret;
 		} else if (ret != SSL_ERROR_WANT_READ  && ret != SSL_ERROR_WANT_WRITE) {
 			ESP_LOGE(TAG, "wolfSSL_write header  returned: %d", wolfSSL_get_error(ssl,ret));

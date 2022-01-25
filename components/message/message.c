@@ -8,6 +8,10 @@
 #include "crypto.h"
 #include "users.h"
 #include "cJSON.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/semphr.h"
+#include "freertos/queue.h"
 #include "wolfssl/wolfcrypt/coding.h"
 #include "wolfssl/wolfcrypt/random.h"
 #include "wolfssl/wolfcrypt/rsa.h"
@@ -48,6 +52,8 @@ char messageBody[128];
 const char fcm[]="fcm.googleapis.com";
 //const char sender_id[]="678314569448";
 //const char key[]="AAAAne6y7ug:APA91bGrGmqtaMj-hrHyF3S4rANa5ph5Po7C9zvaJnH2C3LbqtSNpeVcboJLZqZcFbyEz1P0-kPcd-ko3I7vFeviI54sN-HukhA0_ZMrbL133NAD1_QIEz7GEzSRZJKM6PGg58HBfTyd";
+SemaphoreHandle_t xSemaphore = NULL;
+SemaphoreHandle_t xSemaphore1 = NULL;
 
 
 int myver(int preverify, WOLFSSL_X509_STORE_CTX* store)
@@ -56,7 +62,7 @@ int myver(int preverify, WOLFSSL_X509_STORE_CTX* store)
 	return 1;
 }
 
-static void sendMessageTask(void)
+static void sendMessageTask(void* pvParameters)
 {
 	char* content=NULL;
     char* request=NULL;
@@ -76,14 +82,34 @@ static void sendMessageTask(void)
 	char user_token[MAX_DEVICE_TOKEN_LENGTH];
 	int request_len;
 	char* data;
+	int retries=3;
+	char* message_utf;
 
-    ESP_LOGI(TAG,"Begin SendMessageTask");
+//	vTaskDelay(100);
+
+	if( xSemaphoreTake( xSemaphore, 10000/portTICK_PERIOD_MS ) == pdFALSE )
+	{
+    	ESP_LOGE(TAG,"MessageSendTask Semaphore closed");
+    	ret=-2;
+		goto exit2;
+	}
+	retries=*((int*)pvParameters);
+	ESP_LOGI(TAG,"Begin SendMessageTask");
+begin:
 
     if((access_token=getAccessToken())==NULL)
     {
     	ESP_LOGE(TAG,"Error getAccessToken");
-    	goto exit;
+    	ret=-3;
+		goto exit1;
     }
+    if((dgkey=getDGKey())==NULL)
+    {
+    	ESP_LOGE(TAG,"Error getDGKey");
+    	ret=-4;
+		goto exit1;
+    }
+
     content=malloc(csz);
 	request=malloc(hsz);
 	strcpy(uri,fcm);
@@ -92,51 +118,94 @@ static void sendMessageTask(void)
 	strcat(uri,"/messages:send");
 
 	sockfd=my_connect(fcm,&ssl);
-	if(sockfd<0) goto exit;
-
-	uint8_t j=0;
-	for(uint8_t i=0;i<10;i++)
+	if(sockfd<0)
 	{
-		strcpy(content,"{\"message\":{\"token\":\"");
-		sprintf(uname,"%s_token%d",user,i);
-		if((err=Read_str_params(uname, user_token, MAX_DEVICE_TOKEN_LENGTH))!=ESP_OK) continue;
-		strcat(content,user_token);
-		strcat(content,"\",\"notification\":{\"body\":\"");
-		strcat(content, messageBody);
-		strcat(content,"\",\"title\":\"");
-		strcat(content, messageTitle);
-		strcat(content, "\"}}}");
-		ESP_LOGI(TAG,"Content=%s",content);
-		content_len=strlen(content);
-		sprintf(request,"POST %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: esp-idf/1.0 esp32\r\nContent-Type: application/json; UTF-8\r\nContent-Length: %d\r\nAuthorization: Bearer ",uri,fcm,content_len);
-//    ESP_LOGI(TAG,"Request len=%d",request_len);
-		strcat(request,access_token);
-		strcat(request,"\r\n\r\n");
-		request_len=strlen(request);
-		ESP_LOGI(TAG,"Request=%s",request);
-		ESP_LOGI(TAG,"Content=%s",content);
-
-		ret=rawWrite(ssl,request,strlen(request));
-		if(ret<0) continue;
-
-		ret=rawWrite(ssl, content, content_len);
-		if(ret<0) continue;
-
-		content_len=0;
-		if((data=rawRead(ssl, &content_len))!=NULL)
-		{
-			data[content_len]=0;
-			ESP_LOGI(TAG, "Received data=%s",data);
-		} else ESP_LOGE(TAG,"No response!!!");
-		if(data!=NULL) free(data);
+		ret=-5;
+		goto exit;
 	}
 
+	strcpy(content,"{\"message\":{\"token\":\"");
+	strcat(content,dgkey);
+	strcat(content,"\",\"notification\":{\"body\":\"");
+	message_utf=w1251toutf(messageBody);
+	strcat(content,message_utf);
+	free(message_utf);
+	strcat(content,"\",\"title\":\"");
+	message_utf=w1251toutf(messageTitle);
+	strcat(content,message_utf);
+	free(message_utf);
+	strcat(content, "\"}}}");
+	content_len=strlen(content);
+
+	sprintf(request,"POST %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: esp-idf/1.0 esp32\r\nContent-Type: application/json; charset=UTF-8\r\nContent-Length: %d\r\nAuthorization: Bearer ",uri,fcm,content_len);
+//    ESP_LOGI(TAG,"Request len=%d",request_len);
+	strcat(request,access_token);
+	strcat(request,"\r\n\r\n");
+	request_len=strlen(request);
+
+	ESP_LOGI(TAG,"Request=%s",request);
+	ESP_LOGI(TAG,"Content=%s",content);
+
+	ret=rawWrite(ssl,request,strlen(request));
+	if(ret<0)
+	{
+		ret=-6;
+		goto exit;
+	}
+
+	ret=rawWrite(ssl, content, content_len);
+	if(ret<0)
+	{
+		ret=-7;
+		goto exit;
+	}
+
+	content_len=0;
+	if((data=rawRead(ssl, &content_len))!=NULL)
+	{
+		data[content_len]=0;
+		ESP_LOGI(TAG, "Received data=%s",data);
+	} else ESP_LOGE(TAG,"No response!!!");
+
+	cJSON *json_content = cJSON_Parse(data);
+	if(json_content!=NULL)
+	{
+		cJSON* par = cJSON_GetObjectItemCaseSensitive(json_content,"name");
+		if(par!=NULL && cJSON_IsString(par) && par->valuestring!=NULL )
+		{
+			ESP_LOGI(TAG,"Message successfully sent");
+			ret=0;
+		}
+		par = cJSON_GetObjectItemCaseSensitive(json_content,"error");
+		if(par!=NULL && cJSON_IsString(par) && par->valuestring!=NULL )
+		{
+			ESP_LOGE(TAG,"error=%s",par->valuestring);
+			ret=-1;
+		}
+	}
+	else
+	{
+		ret=-8;
+		ESP_LOGE(TAG,"Error in received data - not json");
+	}
+
+	if(data!=NULL) free(data);
 exit:
 	if(content!=NULL) free(content);
 	if(request!=NULL) free(request);
+	if(dgkey!=NULL) free(dgkey);
 	my_disconnect(sockfd,ssl);
+exit1:
+	if(ret!=0 && --retries>0)
+	{
+		vTaskDelay(3000);
+		goto begin;
+	}
     ESP_LOGI(TAG,"exit from sendMessageTask FREE=%d",xPortGetFreeHeapSize());
-    vTaskDelete(NULL);
+	if(xSemaphoreGive(xSemaphore1)==pdTRUE) ESP_LOGI(TAG,"-------------------------------------Success give 1");
+exit2:
+	*((int*)pvParameters)=ret;
+	vTaskDelete(NULL);
 }
 
 
@@ -547,35 +616,95 @@ exit:
 		return NULL;
 	}
 	return newdgkey;
-
-
 }
 
 void DGTask(void)
 {
 	char* dgkey=NULL;
-	dgkey=getDGKey();
-	dgkey=addToDG("fiwiYgJMRqSuowQ72XM_WY:APA91bFe3w-74KeCmZxUtY64g_fO65REkkQI5efwcOYypjsaqZY5x0JRcS0A8Dr3Zm6ha7hgtgSdieyaQ1lRAImC58lVGwLGiGkQjnKd6jD_DrL0TbX5U4i2YIfsGZKzJ-0gC9TdZUS4");
-	dgkey=addToDG("eJ_HGSwFSRKTa2JXtWrzcv:APA91bG6lfzl37qBt1XooXucfLLGBKSatwQMqpdJMlxIFzyo_7f-LIqWAzfIWQ_R39-Dvs95rv2AnHiWUEGgPfcUsll5czM90ndTtMf_1IFqdG9UTDVcTPYwbehTduvNI7_IqzUrUkdQ");
-//	dgkey=removeFromDG("fiwiYgJMRqSuowQ72XM_WY:APA91bFe3w-74KeCmZxUtY64g_fO65REkkQI5efwcOYypjsaqZY5x0JRcS0A8Dr3Zm6ha7hgtgSdieyaQ1lRAImC58lVGwLGiGkQjnKd6jD_DrL0TbX5U4i2YIfsGZKzJ-0gC9TdZUS4");
-//	dgkey=removeFromDG("eJ_HGSwFSRKTa2JXtWrzcv:APA91bG6lfzl37qBt1XooXucfLLGBKSatwQMqpdJMlxIFzyo_7f-LIqWAzfIWQ_R39-Dvs95rv2AnHiWUEGgPfcUsll5czM90ndTtMf_1IFqdG9UTDVcTPYwbehTduvNI7_IqzUrUkdQ");
-//	dgkey=removeFromDG("eJ_HGSwFSRKTa2JXtWrzcv:APA91bG6lfzl37qBt1XooXucfLLGBKSatwQMqpdJMlxIFzyo_7f-LIqWAzfIWQ_R39-Dvs95rv2AnHiWUEGgPfcUsll5czM90ndTtMf_1IFqdG9UTDVcTPYwbehTduvNI7_IqzUrUkdQ");
+//	if(xSemaphoreGive(xSemaphore)==pdTRUE) ESP_LOGI(TAG,"DGTASK Success give");
+//	else ESP_LOGE(TAG,"DGTASK Error give");
+	ESP_LOGI(TAG,"Enter in DGTask");
+//	if(xSemaphoreTake(xSemaphore,1000/portTICK_PERIOD_MS)==pdTRUE)
+//	{
+//		dgkey=getDGKey();
+//		esp_err_t err=Write_str_params("ilya_token2", dgkey);
+//	    Commit_params();
+	//	dgkey=addToDG("fiwiYgJMRqSuowQ72XM_WY:APA91bFe3w-74KeCmZxUtY64g_fO65REkkQI5efwcOYypjsaqZY5x0JRcS0A8Dr3Zm6ha7hgtgSdieyaQ1lRAImC58lVGwLGiGkQjnKd6jD_DrL0TbX5U4i2YIfsGZKzJ-0gC9TdZUS4");
+	//	dgkey=addToDG("eJ_HGSwFSRKTa2JXtWrzcv:APA91bG6lfzl37qBt1XooXucfLLGBKSatwQMqpdJMlxIFzyo_7f-LIqWAzfIWQ_R39-Dvs95rv2AnHiWUEGgPfcUsll5czM90ndTtMf_1IFqdG9UTDVcTPYwbehTduvNI7_IqzUrUkdQ");
+	//	dgkey=removeFromDG("fiwiYgJMRqSuowQ72XM_WY:APA91bFe3w-74KeCmZxUtY64g_fO65REkkQI5efwcOYypjsaqZY5x0JRcS0A8Dr3Zm6ha7hgtgSdieyaQ1lRAImC58lVGwLGiGkQjnKd6jD_DrL0TbX5U4i2YIfsGZKzJ-0gC9TdZUS4");
+	//	dgkey=removeFromDG("eJ_HGSwFSRKTa2JXtWrzcv:APA91bG6lfzl37qBt1XooXucfLLGBKSatwQMqpdJMlxIFzyo_7f-LIqWAzfIWQ_R39-Dvs95rv2AnHiWUEGgPfcUsll5czM90ndTtMf_1IFqdG9UTDVcTPYwbehTduvNI7_IqzUrUkdQ");
+	//	dgkey=removeFromDG("eJ_HGSwFSRKTa2JXtWrzcv:APA91bG6lfzl37qBt1XooXucfLLGBKSatwQMqpdJMlxIFzyo_7f-LIqWAzfIWQ_R39-Dvs95rv2AnHiWUEGgPfcUsll5czM90ndTtMf_1IFqdG9UTDVcTPYwbehTduvNI7_IqzUrUkdQ");
 
-	if(dgkey!=NULL) free(dgkey);
+//		if(dgkey!=NULL) free(dgkey);
+		EraseKey("ilya_token0");
+		EraseKey("ilya_token1");
+		EraseKey("ilya_token2");
+		if(xSemaphoreGive(xSemaphore)==pdTRUE) ESP_LOGI(TAG,"-----------------Success give");
+//	} else ESP_LOGE(TAG,"DGTask semaphore error");
 	vTaskDelete(NULL);
 }
 
 TaskHandle_t sendMessage(char* user0, char* messageTitle0, char* messageBody0, char* messageBody1)
 {
 	strcpy(user,user0);
+	int volatile retries=3;
 	messageTitle=messageTitle0;
 	strcpy(messageBody,messageBody0);
 	if(messageBody0[0] && messageBody1[0]) strcat(messageBody," and ");
 	strcat(messageBody,messageBody1);
 	TaskHandle_t xHandle = NULL;
 	TaskHandle_t xHandle1 = NULL;
+	if((xSemaphore=xSemaphoreCreateBinary())==NULL) ESP_LOGE(TAG,"Unable to create semaphore");
+//	if(xSemaphoreGive(xSemaphore)==pdTRUE) ESP_LOGI(TAG,"Success give");
+	if((xSemaphore1=xSemaphoreCreateBinary())==NULL) ESP_LOGE(TAG,"Unable to create semaphore1");
 	ESP_LOGI(TAG,"Proceeding mes1 %s and mes2 %s to user %s",messageBody0,messageBody1,user0);
 //	xTaskCreatePinnedToCore(DGTask, "DG_request task", 12000, NULL, 5, &xHandle1,0);
-	xTaskCreatePinnedToCore(sendMessageTask, "https_post_request task", 12000, NULL, 5, &xHandle,0);
+	if(xSemaphoreGive(xSemaphore)==pdTRUE) ESP_LOGI(TAG,"-----------------Success give");
+	xTaskCreatePinnedToCore(sendMessageTask, "https_post_request task", 12000, (void*)(&retries), 5, &xHandle,0);
+//	if(retries>0) vTaskDelay(100/portTICK_PERIOD_MS);
+	if(xSemaphoreTake(xSemaphore1,( TickType_t )600000)==pdTRUE)
+	{
+		if(retries==0) ESP_LOGI(TAG,"Message successfully sent");
+		else ESP_LOGE(TAG, "Error %d while sending message",retries);
+	}
+	else
+	{
+		ESP_LOGE(TAG, "Send message task not finished in 10 min, aborted...");
+		vTaskDelete(xHandle);
+	}
+	vSemaphoreDelete(xSemaphore);
+	vSemaphoreDelete(xSemaphore1);
 	return xHandle;
+}
+
+char* w1251toutf(char* w1251)
+{
+	int len=0;
+	int i=0;
+	char* c;
+	uint16_t x;
+	for(c=w1251;(*c)!=0;c++) if((*c)>0x7f) len+=2;else len++;
+	char* utf=malloc(len+1);
+	for(c=w1251;(*c)!=0;c++)
+	{
+		if((*c)<0x80) utf[i++]=*c;
+		else if((*c)==0xa8)    //ימ במכüרמו
+		{
+			utf[i++]=0xd0;
+			utf[i++]=0x01;
+		}
+		else if((*c)==0xb8)    //ימ לאכוםüךמו
+		{
+			utf[i++]=0xd1;
+			utf[i++]=0x91;
+		}
+		else
+		{
+			x=0x0350 +(*c);
+			utf[i++]=( ( x & 0x07c0 )>>6) | 0x00c0;
+			utf[i++]=( x & 0x003F )  | 0x0080;
+		}
+	}
+	utf[i]=0;
+	return utf;
 }

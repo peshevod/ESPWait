@@ -406,12 +406,12 @@ char* getAccessToken(void)
     free(content);
     if(ret<0) goto exit;
 
-    ESP_LOGI(TAG, "Reading HTTP response...");
+//    ESP_LOGI(TAG, "Reading HTTP response...");
     content_len=0;
     if((data=rawRead(ssl, &content_len))!=NULL)
     {
     	data[content_len]=0;
-    	ESP_LOGI(TAG, "Received data=%s",data);
+//    	ESP_LOGI(TAG, "Received data=%s",data);
     };
 
 	cJSON *json_content = cJSON_Parse(data);
