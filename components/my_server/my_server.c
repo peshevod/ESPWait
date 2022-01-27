@@ -24,6 +24,8 @@
 #include "storage.h"
 #include "esp_tls.h"
 #include "storage.h"
+#include "message.h"
+//#include "esp_tls_wolfssl.h"
 
 #define LOG_LOCAL_LEVEL ESP_LOG_VERBOSE
 #include "esp_log.h"
@@ -34,7 +36,13 @@ extern ChannelParams_t Channels[MAX_RU_SINGLE_BAND_CHANNELS];
 extern const int8_t txPowerRU864[];
 extern uint8_t number_of_devices;
 extern NetworkSession_t *networkSessions[MAX_NUMBER_OF_DEVICES];
-
+dev_dgkey_t dev_dgkey;
+extern SemaphoreHandle_t xSemaphore_DG;
+extern WOLFSSL_CTX* ctx;
+extern const unsigned char cacert_pem_start[] asm("_binary_mm304_asuscomm_com_der_start");
+extern const unsigned char cacert_pem_end[]   asm("_binary_mm304_asuscomm_com_der_end");
+extern const unsigned char prvtkey_pem_start[] asm("_binary_mm304_asuscomm_com_key_start");
+extern const unsigned char prvtkey_pem_end[]   asm("_binary_mm304_asuscomm_com_key_end");
 
 #define FILE_PATH_MAX (ESP_VFS_PATH_MAX + 128)
 #define SCRATCH_BUFSIZE (1280)
@@ -639,8 +647,11 @@ static esp_err_t monitor_post_handler(httpd_req_t *req)
     esp_err_t err=ESP_OK;
     char uname[USERNAME_MAX+8];
     char uname_free[USERNAME_MAX+8];
+	TaskHandle_t xHandle = NULL;
+	int ret;
 
-    ESP_LOGI(TAG,"POST monitor/* handler");
+    ret=-1;
+	ESP_LOGI(TAG,"POST monitor/* handler");
 	print_headers(req);
     httpd_resp_set_hdr(req, "Access-Control-Allow-Origin" , "*");
     if(!verifyBearer(req,user,role))
@@ -664,24 +675,38 @@ static esp_err_t monitor_post_handler(httpd_req_t *req)
     	}
     	token[req->content_len]=0;
     	ESP_LOGI(TAG,"Get content=%s",token);
-    	uint8_t found=0;
-    	uname_free[0]=0;
-    	for(uint8_t i=0;i<10;i++)
+    	if((xSemaphore_DG=xSemaphoreCreateBinary())==NULL) ESP_LOGE(TAG,"Unable to create DG semaphore");
+//    	xSemaphore_DG=NULL;
+    	dev_dgkey.device_token=token;
+    	if(token[0]=='-')
     	{
-    		sprintf(uname,"%s_token%d",user,i);
-    		if((found=isKeyExist(uname,token))==1) break;
-    		if(found==0 && uname_free[0]==0) strcpy(uname_free,uname);
+    		xTaskCreatePinnedToCore(removeFromDG, "removeFromDG", 8192, (void*)(&dev_dgkey), 5, &xHandle,0);
     	}
-    	if(found!=1)
+    	else
     	{
-			Write_str_params(uname_free,token);
-			Commit_params();
+    		xTaskCreatePinnedToCore(addToDG, "addToDG", 8192, (void*)(&dev_dgkey), 5, &xHandle,0);
     	}
-    	free(token);
-     }
-    httpd_resp_send(req, NULL,0);
-
-
+    	ret=-1;
+    	if(xSemaphoreTake(xSemaphore_DG,15000/portTICK_PERIOD_MS)==pdTRUE) ret=0;
+    	else ret=-1;
+    	if(xSemaphore_DG!=NULL) vSemaphoreDelete(xSemaphore_DG);
+    	if(dev_dgkey.device_token!=NULL) free(dev_dgkey.device_token);
+    	dev_dgkey.device_token=NULL;
+    	token=NULL;
+    	if(dev_dgkey.dgkey!=NULL) free(dev_dgkey.dgkey);
+    	dev_dgkey.dgkey=NULL;
+    	if(ret==0)
+    	{
+    		ESP_LOGI(TAG,"Successfully added/removed device token to/from group");
+    		httpd_resp_send(req, NULL,0);
+    	}
+    	else
+    	{
+    		if(xHandle!=NULL) vTaskDelete(xHandle);
+    		ESP_LOGE(TAG,"Error adding/removing device token to/from group");
+			httpd_resp_send_err(req,404,"Device token not added/removed to/from group");
+    	}
+    } else httpd_resp_send_err(req,404,"Unknown request");
     return ESP_OK;
 }
 
@@ -726,7 +751,8 @@ static esp_err_t monitor_get_handler(httpd_req_t *req)
     		{
     			if(chunk==0) strcpy(join,"{\"Sessions\":[");
     			else strcpy(join,",");
-    			if((err=getJsonData(user, role, networkSessions[j],join, 2048-strlen(join)))==ESP_OK)
+    			int join_len=strlen(join);
+    			if((err=getJsonData(user, role, networkSessions[j],&join[join_len], 2048-join_len))==ESP_OK)
 				{
     				if((err=httpd_resp_send_chunk(req, join, strlen(join)))==ESP_OK)
 					{
@@ -740,7 +766,7 @@ static esp_err_t monitor_get_handler(httpd_req_t *req)
     	}
     	if(err==ESP_OK)
 		{
-    		strcpy(join,"]}");
+    		if(chunk==0) strcpy(join,"{\"Sessions\":[]}");else strcpy(join,"]}");
     		err=httpd_resp_send_chunk(req, join, strlen(join));
     		if(err==ESP_OK)
     		{
@@ -1235,17 +1261,14 @@ httpd_handle_t start_my_server(void)
     config.uri_match_fn=httpd_uri_match_wildcard;
     config.max_uri_handlers=16;
 
-    extern const unsigned char cacert_pem_start[] asm("_binary_mm304_asuscomm_com_der_start");
-    extern const unsigned char cacert_pem_end[]   asm("_binary_mm304_asuscomm_com_der_end");
     conf.cacert_pem = cacert_pem_start;
     conf.cacert_len = cacert_pem_end - cacert_pem_start;
 
-    extern const unsigned char prvtkey_pem_start[] asm("_binary_mm304_asuscomm_com_key_start");
-    extern const unsigned char prvtkey_pem_end[]   asm("_binary_mm304_asuscomm_com_key_end");
     conf.prvtkey_pem = prvtkey_pem_start;
     conf.prvtkey_len = prvtkey_pem_end - prvtkey_pem_start;
 
     esp_err_t ret = httpd_ssl_start(&my_server, &conf);
+//    ctx=((esp_tls_t*)(conf.httpd.global_transport_ctx))->priv_ctx;
 //    esp_err_t ret = httpd_start(&my_server, &config);
     if (ESP_OK == ret) {
    // Set URI handlers

@@ -44,7 +44,9 @@
 #include "lorawan_types.h"
 #include "MainLoop.h"
 #include "CppTest.h"
+#include "wolfssl/ssl.h"
 #include "my_server.h"
+#include "my_http.h"
 //#include "mdns.h"
 #include "lwip/apps/netbiosns.h"
 #include "system_test.h"
@@ -85,6 +87,7 @@ static volatile uint8_t ready_to_send=0;
 static volatile uint8_t wifi_stopped;
 static uint8_t only_timer_wakeup=0;
 Profile_t JoinServer;
+httpd_handle_t my_server_handle=NULL;
 
 extern const uint8_t aws_root_ca_pem_start[] asm("_binary_aws_root_ca_pem_start");
 extern const uint8_t aws_root_ca_pem_end[] asm("_binary_aws_root_ca_pem_end");
@@ -771,7 +774,6 @@ static esp_err_t set_global_sec()
 static void system_init()
 {
 	esp_err_t err;
-    httpd_handle_t my_server_handle=NULL;
     vTaskDelay(1000 / portTICK_PERIOD_MS);
     periph_module_reset(PERIPH_UART2_MODULE);
 	init_uart0();
@@ -819,7 +821,9 @@ static void system_init()
 //   	char role[ROLENAME_MAX];
 //    makeToken(token, sizeof(token), "ilya", 3600, "user");
 //   	if(verifyToken(token,user,role)==ESP_OK) ESP_LOGI(TAG,"Token verified user=%s role=%s",user,role);
-    ESP_LOGI(TAG,"before start server FREE=%d",xPortGetFreeHeapSize());
+	wolfSSL_Init();
+	getCTX();
+	ESP_LOGI(TAG,"before start server FREE=%d",xPortGetFreeHeapSize());
     my_server_handle = start_my_server();
     ESP_LOGI(TAG,"after start server FREE=%d",xPortGetFreeHeapSize());
     if (my_server_handle ==NULL)  {

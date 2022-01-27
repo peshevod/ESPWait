@@ -28,6 +28,8 @@
 
 extern const char json_start[]	asm("_binary_ServiceAccount_json_start");
 extern const char json_end[] 	asm("_binary_ServiceAccount_json_end");
+extern const unsigned char ca_start[]	asm("_binary_GSRootCA_txt_start");
+extern const unsigned char ca_end[] 		asm("_binary_GSRootCA_txt_end");
 
 static const char TAG[]="access.c";
 static RsaKey         rsaKey;
@@ -37,7 +39,7 @@ static char* client_email;
 static char* client_id;
 static char* auth_uri;
 static char* token_uri;
-static char* host;
+char* oauth2_host;
 char* sender_id;
 char* api_key;
 static const char scope[]="https://www.googleapis.com/auth/firebase.messaging";
@@ -215,8 +217,8 @@ static void JsonParse(const char* json_buf)
 			strcpy(token_uri,par->valuestring);
 			char* x=strchr(&token_uri[8],'/');
 			*x=0;
-			host=malloc(strlen(&token_uri[8])+1);
-			strcpy(host,&token_uri[8]);
+			oauth2_host=malloc(strlen(&token_uri[8])+1);
+			strcpy(oauth2_host,&token_uri[8]);
 			*x='/';
 			ESP_LOGI(TAG,"token_uri=%s",token_uri);
 		}
@@ -318,100 +320,44 @@ char* getAccessToken(void)
     //    wolfSSL_Debugging_ON();
 
     ESP_LOGI(TAG,"Getting access token");
-    if ((ret = resolve_host_name(host, strlen(host), &addrinfo)) != ESP_OK) {
-        goto exit;
-    }
 
-
-    /* create and set up socket */
-    sockfd = socket(addrinfo->ai_family, addrinfo->ai_socktype, addrinfo->ai_protocol);
-    servAddr = (struct sockaddr_in *)addrinfo->ai_addr;
-    servAddr->sin_port = htons(443);
-    ESP_LOGI(TAG,"Host=%s Ip-address=%s",host, inet_ntoa(servAddr->sin_addr.s_addr));
-
-
-    /* connect to socket */
-    ret=connect(sockfd,  servAddr, addrinfo->ai_addrlen);
-    if(ret<0)
-    {
-    	ESP_LOGE(TAG,"Socket not connected");
-    	goto exit;
-    }
-
-    /* initialize wolfssl library */
-    wolfSSL_Init();
-    method = wolfTLSv1_3_client_method(); /* use TLS v1.2 or 1.3 */
-
-    /* make new ssl context */
-    if ( (ctx = wolfSSL_CTX_new(method)) == NULL) {
-    	ESP_LOGE(TAG,"Err ctx method");
-    	goto exit;
-    }
-
-    wolfSSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, NULL);
-    ret=wolfSSL_CTX_load_verify_locations(ctx, NULL, "/sdcard/certs");
-    if(ret<0)
-    {
-    	ESP_LOGE(TAG,"Error loading cert %d", ret);
-    	goto exit;
-    }
-/*    ret=wolfSSL_CTX_trust_peer_cert(ctx,"/sdcard/trusted/oauth2.cer",SSL_FILETYPE_ASN1);
-    if(ret<0)
-    {
-    	ESP_LOGE(TAG,"Error loading trusted %d", wolfSSL_get_error(ssl,ret));
-    	goto exit;
-    }*/
-    ret=wolfSSL_CTX_UseSNI(ctx, WOLFSSL_SNI_HOST_NAME, (void *) host, XSTRLEN(host));
-    if(ret<0)
-    {
-    	ESP_LOGE(TAG,"Error loading hostName %d", ret);
-    	goto exit;
-    }
-
-    /* make new wolfSSL struct */
-    if ( (ssl = wolfSSL_new(ctx)) == NULL) {
-     	ESP_LOGE(TAG,"Err create ssl");
-     	goto exit;
-    }
-
-    /* Connect wolfssl to the socket, server, then send message */
-    ret=wolfSSL_set_fd(ssl, sockfd);
-    if(ret<0)
-    {
-    	ESP_LOGE(TAG,"Error set fd");
-    	goto exit;
-    }
-
-    wolfSSL_check_domain_name (ssl, host);
-
-    ESP_LOGI(TAG,"before connect getAccessToken FREE=%d",xPortGetFreeHeapSize());
-    ret=wolfSSL_connect(ssl);
-    if(ret<0)
-    {
-    	ESP_LOGE(TAG,"Error connect %d",ret);
-    	goto exit;
-    }
+    ret=-1;
+    sockfd=my_connect(oauth2_host,&ssl);
+	if(sockfd<0)
+	{
+		ret=-5;
+		goto exit;
+	}
 
     content=createContent(&content_len);
     if(content==NULL)
     {
     	ESP_LOGE(TAG,"Unable to perform request: Content is NULL");
+    	ret=-4;
     	goto exit;
     }
-    sprintf(request,"POST %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: esp-idf/1.0 esp32\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: %d\r\n\r\n",token_uri,host,content_len);
+    sprintf(request,"POST %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: esp-idf/1.0 esp32\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: %d\r\n\r\n",token_uri,oauth2_host,content_len);
 
-    if(rawWrite(ssl,request,strlen(request))) goto exit;
+	ret=rawWrite(ssl,request,strlen(request));
+	if(ret<0)
+	{
+		ret=-6;
+		goto exit;
+	}
 
-    ret=rawWrite(ssl, content, content_len);
-    free(content);
-    if(ret<0) goto exit;
+	ret=rawWrite(ssl, content, content_len);
+	if(ret<0)
+	{
+		ret=-7;
+		goto exit;
+	}
 
 //    ESP_LOGI(TAG, "Reading HTTP response...");
     content_len=0;
     if((data=rawRead(ssl, &content_len))!=NULL)
     {
     	data[content_len]=0;
-//    	ESP_LOGI(TAG, "Received data=%s",data);
+    	ESP_LOGI(TAG, "Received data=%s",data);
     };
 
 	cJSON *json_content = cJSON_Parse(data);
@@ -432,6 +378,11 @@ char* getAccessToken(void)
 			access_token[blen]=0;
 			ESP_LOGI(TAG,"access_token=%s",access_token);
 		}
+		else
+		{
+			ret=-10;
+			goto exit;
+		}
 		par = cJSON_GetObjectItemCaseSensitive(json_content,"expires_in");
 		if(par!=NULL && cJSON_IsNumber(par))
 		{
@@ -439,26 +390,32 @@ char* getAccessToken(void)
 			ESP_LOGI(TAG,"Expiration interval =%d sec.",expt);
 			if(expt<=0)
 			{
-				if(access_token!=NULL) free(access_token);
-				access_token=NULL;
+				ret=-8;
+				goto exit;
 			}
 		}
 		else
 		{
-			if(access_token!=NULL) free(access_token);
-			access_token=NULL;
+			ret=-9;
+			goto exit;
 		}
 		cJSON_Delete(json_content);
 	}
+	else
+	{
+		ret=-11;
+		goto exit;
+	}
 
 exit:
+	if(ret<0 && access_token!=NULL) free(access_token);
 	if(data!=NULL) free(data);
     if(ssl!=NULL) wolfSSL_free(ssl);
     if(ctx!=NULL) wolfSSL_CTX_free(ctx);
-    wolfSSL_Cleanup();
+//    wolfSSL_Cleanup();
     if(sockfd!=-1) close(sockfd);
     ESP_LOGI(TAG,"exit from getAcessToken FREE=%d",xPortGetFreeHeapSize());
-    if(access_token!=NULL)
+    if(ret==0)
     {
 //    	xTimerChangePeriod(accessTimer, (expt-10)*1000 / portTICK_PERIOD_MS, 0);
     	xTimerChangePeriod(accessTimer, 300*1000 / portTICK_PERIOD_MS, 0);

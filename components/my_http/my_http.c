@@ -31,6 +31,79 @@
 #include "my_http.h"
 
 static const char TAG[]="my_http.c";
+static uint8_t context_created=0;
+WOLFSSL_METHOD* method;
+WOLFSSL_CTX* my_ctx=NULL;
+extern const unsigned char cacert_pem_start[] asm("_binary_mm304_asuscomm_com_der_start");
+extern const unsigned char cacert_pem_end[]   asm("_binary_mm304_asuscomm_com_der_end");
+extern const unsigned char prvtkey_pem_start[] asm("_binary_mm304_asuscomm_com_key_start");
+extern const unsigned char prvtkey_pem_end[]   asm("_binary_mm304_asuscomm_com_key_end");
+extern const unsigned char ca_start[]	asm("_binary_GSRootCA_txt_start");
+extern const unsigned char ca_end[] 		asm("_binary_GSRootCA_txt_end");
+
+extern char* oauth2_host;
+
+int myver(int preverify, WOLFSSL_X509_STORE_CTX* store)
+{
+	ESP_LOGI(TAG,"Preverify=%d FREE=%d store? %s",preverify,xPortGetFreeHeapSize(),store==NULL ? "NULL" : "Not NULL");
+	return 1;
+}
+
+
+int getCTX(void)
+{
+	int ret;
+
+//	wolfSSL_Debugging_ON();
+
+	if(my_ctx!=NULL) return 0;
+//	method = wolfTLSv1_3_client_method(); /* use TLS v1.2 or 1.3 */
+//	method = wolfTLSv1_3_server_method(); /* use TLS v1.2 or 1.3 */
+	method = wolfSSLv23_method(); /* use TLS v1.2 or 1.3 */
+
+	/* make new ssl context */
+	if ( (my_ctx = wolfSSL_CTX_new(method)) == NULL) {
+		ESP_LOGE(TAG,"Error my_ctx method");
+		ret=-1;
+		goto exit;
+	}
+
+	if((ret=wolfSSL_CTX_use_certificate_buffer(my_ctx,cacert_pem_start,cacert_pem_end - cacert_pem_start,WOLFSSL_FILETYPE_PEM))<0)
+	{
+		ESP_LOGE(TAG,"Error use cert buffer");
+		goto exit;
+	}
+	if((ret=wolfSSL_CTX_use_PrivateKey_buffer(my_ctx,prvtkey_pem_start,prvtkey_pem_end - prvtkey_pem_start,WOLFSSL_FILETYPE_PEM))<0)
+	{
+		ESP_LOGE(TAG,"Error use PrivateKey buffer");
+		goto exit;
+	}
+	if((ret=wolfSSL_CTX_load_verify_locations(my_ctx, NULL, "/sdcard/certs"))<0)
+	{
+		ESP_LOGE(TAG,"Error loading cert %d", ret);
+		ret=-2;
+		goto exit;
+	}
+/*	if((ret=wolfSSL_CTX_load_verify_buffer(my_ctx,ca_start,ca_end-ca_start,WOLFSSL_FILETYPE_PEM))<0)
+	{
+		ESP_LOGE(TAG,"Error loading cert %d", ret);
+		ret=-2;
+		goto exit;
+	}*/
+	wolfSSL_CTX_set_verify(my_ctx, SSL_VERIFY_PEER, NULL);
+	ret=0;
+exit:
+    if(ret<0 && my_ctx!=NULL)
+    {
+    	if(my_ctx!=NULL) wolfSSL_CTX_free(my_ctx);
+    	my_ctx=NULL;
+    	ESP_LOGE(TAG,"Error while creating context %d",ret);
+    }
+    if(ret==0) ESP_LOGI(TAG,"Context successfilly created");
+    return ret;
+}
+
+
 
 esp_err_t resolve_host_name(const char *host, size_t hostlen, struct addrinfo **address_info)
 {
@@ -256,7 +329,6 @@ int rawWrite(WOLFSSL* ssl, char* buf, int len)
 	return 0;
 }
 
-WOLFSSL_CTX* ctx=NULL;
 
 int my_connect(const char* host, WOLFSSL** ssl)
 {
@@ -264,10 +336,10 @@ int my_connect(const char* host, WOLFSSL** ssl)
 
     int ret=-1;
     int sockfd=-1;
-    WOLFSSL_METHOD* method;
     struct  sockaddr_in *servAddr;
     struct addrinfo *addrinfo;
 	if ((ret = resolve_host_name(host, strlen(host), &addrinfo)) != ESP_OK) {
+		ret=-8;
 		goto exit;
 	}
 	/* create and set up socket */
@@ -281,42 +353,19 @@ int my_connect(const char* host, WOLFSSL** ssl)
 	if(ret<0)
 	{
 		ESP_LOGE(TAG,"Socket not connected");
+		ret=-2;
 		goto exit;
 	}
 
-	/* initialize wolfssl library */
-	wolfSSL_Init();
-	method = wolfTLSv1_3_client_method(); /* use TLS v1.2 or 1.3 */
-
-	/* make new ssl context */
-	if ( (ctx = wolfSSL_CTX_new(method)) == NULL) {
-		ESP_LOGE(TAG,"Err ctx method");
+	if((ret=getCTX())<0)
+	{
+		ret=-3;
 		goto exit;
 	}
-
-	wolfSSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, NULL);
-	ret=wolfSSL_CTX_load_verify_locations(ctx, NULL, "/sdcard/certs");
-	if(ret<0)
-	{
-		ESP_LOGE(TAG,"Error loading cert %d", ret);
-		goto exit;
-	}
-/*    ret=wolfSSL_CTX_trust_peer_cert(ctx,"/sdcard/trusted/oauth2.cer",SSL_FILETYPE_ASN1);
-	if(ret<0)
-	{
-		ESP_LOGE(TAG,"Error loading trusted %d", wolfSSL_get_error(ssl,ret));
-		goto exit;
-	}*/
-	ret=wolfSSL_CTX_UseSNI(ctx, WOLFSSL_SNI_HOST_NAME, (void *) host, XSTRLEN(host));
-	if(ret<0)
-	{
-		ESP_LOGE(TAG,"Error loading hostName %d", ret);
-		goto exit;
-	} else ESP_LOGI(TAG,"Set sni for host %s",host);
-
 	/* make new wolfSSL struct */
-	if ( (*ssl = wolfSSL_new(ctx)) == NULL) {
+	if ( (*ssl = wolfSSL_new(my_ctx)) == NULL) {
 		ESP_LOGE(TAG,"Err create ssl");
+		ret=-4;
 		goto exit;
 	}
 
@@ -325,22 +374,33 @@ int my_connect(const char* host, WOLFSSL** ssl)
 	if(ret<0)
 	{
 		ESP_LOGE(TAG,"Error set fd");
+		ret=-5;
 		goto exit;
 	}
+
+    if((ret=wolfSSL_UseSNI(*ssl, WOLFSSL_SNI_HOST_NAME, (void *) host, XSTRLEN(host)))<0)
+	{
+		ESP_LOGE(TAG,"Error loading hostName %d", ret);
+		ret=-7;
+		goto exit;
+	} else ESP_LOGI(TAG,"Set sni for host %s",host);
 
 	wolfSSL_check_domain_name (*ssl, host);
 
 	ret=wolfSSL_connect(*ssl);
 	if(ret<0)
 	{
-		ESP_LOGE(TAG,"Error connect %d",ret);
+		ESP_LOGE(TAG,"Error connect %d ",ret);
+		ret=-6;
 		goto exit;
 	}
 	return sockfd;
 exit:
-	if(ssl!=NULL) wolfSSL_free(ssl);
-	if(ctx!=NULL) wolfSSL_CTX_free(ctx);
-	wolfSSL_Cleanup();
+	if((*ssl)!=NULL)
+	{
+		wolfSSL_free(*ssl);
+		*ssl=NULL;
+	}
 	if(sockfd!=-1) close(sockfd);
 	return -1;
 }
@@ -348,8 +408,7 @@ exit:
 void my_disconnect(int sockfd, WOLFSSL* ssl)
 {
 	if(ssl!=NULL) wolfSSL_free(ssl);
-	if(ctx!=NULL) wolfSSL_CTX_free(ctx);
-	wolfSSL_Cleanup();
+//	wolfSSL_Cleanup();
 	if(sockfd!=-1) close(sockfd);
 }
 

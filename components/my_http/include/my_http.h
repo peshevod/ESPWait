@@ -14,6 +14,7 @@ char* rawRead(WOLFSSL* ssl, int* content_len);
 int rawWrite(WOLFSSL* ssl, char* buf, int len);
 int my_connect(const char* host, WOLFSSL** ssl);
 void my_disconnect(int sockfd, WOLFSSL* ssl);
+int getCTX(void);
 
 #ifdef	__cplusplus
 }
