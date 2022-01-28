@@ -412,3 +412,9 @@ void my_disconnect(int sockfd, WOLFSSL* ssl)
 	if(sockfd!=-1) close(sockfd);
 }
 
+void my_free(void** x)
+{
+	if(*x!=NULL) free(*x);
+	*x=NULL;
+}
+

@@ -38,6 +38,7 @@ extern uint8_t number_of_devices;
 extern NetworkSession_t *networkSessions[MAX_NUMBER_OF_DEVICES];
 dev_dgkey_t dev_dgkey;
 extern SemaphoreHandle_t xSemaphore_DG;
+extern SemaphoreHandle_t xSemaphore_Message;
 extern WOLFSSL_CTX* ctx;
 extern const unsigned char cacert_pem_start[] asm("_binary_mm304_asuscomm_com_der_start");
 extern const unsigned char cacert_pem_end[]   asm("_binary_mm304_asuscomm_com_der_end");
@@ -675,7 +676,8 @@ static esp_err_t monitor_post_handler(httpd_req_t *req)
     	}
     	token[req->content_len]=0;
     	ESP_LOGI(TAG,"Get content=%s",token);
-    	if((xSemaphore_DG=xSemaphoreCreateBinary())==NULL) ESP_LOGE(TAG,"Unable to create DG semaphore");
+    	if((xSemaphore_Message=xSemaphoreCreateBinary())==NULL) ESP_LOGE(TAG,"Unable to create DG semaphore");
+		if(xSemaphore_Message!=NULL) xSemaphoreGive(xSemaphore_Message);
 //    	xSemaphore_DG=NULL;
     	dev_dgkey.device_token=token;
     	if(token[0]=='-')
@@ -686,15 +688,10 @@ static esp_err_t monitor_post_handler(httpd_req_t *req)
     	{
     		xTaskCreatePinnedToCore(addToDG, "addToDG", 8192, (void*)(&dev_dgkey), 5, &xHandle,0);
     	}
-    	ret=-1;
-    	if(xSemaphoreTake(xSemaphore_DG,15000/portTICK_PERIOD_MS)==pdTRUE) ret=0;
+		vTaskDelay(100/portTICK_PERIOD_MS);
+    	if(xSemaphoreTake(xSemaphore_Message,15000/portTICK_PERIOD_MS)==pdTRUE) ret=0;
     	else ret=-1;
-    	if(xSemaphore_DG!=NULL) vSemaphoreDelete(xSemaphore_DG);
-    	if(dev_dgkey.device_token!=NULL) free(dev_dgkey.device_token);
-    	dev_dgkey.device_token=NULL;
-    	token=NULL;
-    	if(dev_dgkey.dgkey!=NULL) free(dev_dgkey.dgkey);
-    	dev_dgkey.dgkey=NULL;
+    	if(xSemaphore_Message!=NULL) vSemaphoreDelete(xSemaphore_Message);
     	if(ret==0)
     	{
     		ESP_LOGI(TAG,"Successfully added/removed device token to/from group");

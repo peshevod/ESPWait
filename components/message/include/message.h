@@ -24,6 +24,9 @@ char* createDGKey(char* device_token);
 void removeFromDG(void* pvParameters);
 void addToDG(void* pvParameters);
 char* w1251toutf(char* w1251);
+void messageTimerReset(TimerHandle_t xTimer);
+void messageReset( uint8_t exit );
+void initMessage(void);
 
 #ifdef __cplusplus
 }

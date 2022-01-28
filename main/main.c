@@ -823,6 +823,7 @@ static void system_init()
 //   	if(verifyToken(token,user,role)==ESP_OK) ESP_LOGI(TAG,"Token verified user=%s role=%s",user,role);
 	wolfSSL_Init();
 	getCTX();
+	void initMessage(void);
 	ESP_LOGI(TAG,"before start server FREE=%d",xPortGetFreeHeapSize());
     my_server_handle = start_my_server();
     ESP_LOGI(TAG,"after start server FREE=%d",xPortGetFreeHeapSize());
