@@ -57,6 +57,7 @@
 #include "soc/apb_ctrl_reg.h"
 #include "access.h"
 #include "esp_smartconfig.h"
+#include "message.h"
 #define LOG_LOCAL_LEVEL ESP_LOG_VERBOSE
 #include "esp_log.h"
 //#include "spi_intf.h"
@@ -823,7 +824,7 @@ static void system_init()
 //   	if(verifyToken(token,user,role)==ESP_OK) ESP_LOGI(TAG,"Token verified user=%s role=%s",user,role);
 	wolfSSL_Init();
 	getCTX();
-	void initMessage(void);
+	initMessage();
 	ESP_LOGI(TAG,"before start server FREE=%d",xPortGetFreeHeapSize());
     my_server_handle = start_my_server();
     ESP_LOGI(TAG,"after start server FREE=%d",xPortGetFreeHeapSize());

@@ -688,7 +688,7 @@ static esp_err_t monitor_post_handler(httpd_req_t *req)
     	{
     		xTaskCreatePinnedToCore(addToDG, "addToDG", 8192, (void*)(&dev_dgkey), 5, &xHandle,0);
     	}
-		vTaskDelay(100/portTICK_PERIOD_MS);
+		vTaskDelay(10/portTICK_PERIOD_MS);
     	if(xSemaphoreTake(xSemaphore_Message,15000/portTICK_PERIOD_MS)==pdTRUE) ret=0;
     	else ret=-1;
     	if(xSemaphore_Message!=NULL) vSemaphoreDelete(xSemaphore_Message);

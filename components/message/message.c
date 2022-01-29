@@ -337,7 +337,7 @@ char* createDGKey(char* device_token)
     	goto exit;
     }
 
-	cJSON *json_content = cJSON_Parse(data);
+	json_content = cJSON_Parse(data);
 	if(json_content!=NULL)
 	{
 		cJSON* par = cJSON_GetObjectItemCaseSensitive(json_content,"notification_key");
@@ -355,6 +355,7 @@ char* createDGKey(char* device_token)
 			ret=-1;
 		}
 		cJSON_Delete(json_content);
+		json_content=NULL;
 	}
 exit:
 	my_free(&content);
@@ -379,7 +380,7 @@ void removeFromDG(void* pvParameters)
     int content_len;
     int req_len;
 	char dgkey_name[MAX_DGKEY_NAME];
-	dev_dgkey_t* dev_dgkey=NULL;
+	dev_dgkey_t* dev_dgkey=(dev_dgkey_t*)pvParameters;
 
 	xTimerStart(messageTimer,0);
 	if( xSemaphoreTake( xSemaphore_Message, 10000/portTICK_PERIOD_MS ) == pdFALSE )
@@ -387,7 +388,6 @@ void removeFromDG(void* pvParameters)
     	ESP_LOGE(TAG,"MessageSendTask Semaphore closed");
     	goto exit;
 	}
-	dev_dgkey=(dev_dgkey_t*)pvParameters;
 	if(dev_dgkey->device_token==NULL) goto exit;
 	dev_dgkey->dgkey=getDGKey();
 	if(dev_dgkey->dgkey==NULL) goto exit;
@@ -433,7 +433,7 @@ void removeFromDG(void* pvParameters)
     	goto exit;
     }
 
-	cJSON *json_content = cJSON_Parse(data);
+	json_content = cJSON_Parse(data);
 	if(json_content!=NULL)
 	{
 		my_free(&dgkey_store);
@@ -454,6 +454,7 @@ void removeFromDG(void* pvParameters)
 			ret=-1;
 		}
 		cJSON_Delete(json_content);
+		json_content=NULL;
 	}
 exit:
 	my_free(&dev_dgkey->device_token);
@@ -470,9 +471,14 @@ void addToDG(void* pvParameters)
     int content_len;
     int req_len;
 	char dgkey_name[MAX_DGKEY_NAME];
-	dev_dgkey_t* dev_dgkey;
+	dev_dgkey_t* dev_dgkey=(dev_dgkey_t*)pvParameters;
 
-	dev_dgkey=(dev_dgkey_t*)pvParameters;
+	xTimerStart(messageTimer,0);
+	if( xSemaphoreTake( xSemaphore_Message, 10000/portTICK_PERIOD_MS ) == pdFALSE )
+	{
+    	ESP_LOGE(TAG,"MessageSendTask Semaphore closed");
+    	goto exit;
+	}
 	if(dev_dgkey->device_token==NULL) goto exit;
 	dev_dgkey->dgkey=getDGKey();
 	if(dev_dgkey->dgkey==NULL)
@@ -534,7 +540,7 @@ void addToDG(void* pvParameters)
     	goto exit;
     }
 
-	cJSON *json_content = cJSON_Parse(data);
+	json_content = cJSON_Parse(data);
 	if(json_content!=NULL)
 	{
 		my_free(&dgkey_store);
@@ -555,6 +561,7 @@ void addToDG(void* pvParameters)
 			ret=-1;
 		}
 		cJSON_Delete(json_content);
+		json_content=NULL;
 	}
 exit:
 	my_free(&dev_dgkey->device_token);
@@ -679,6 +686,7 @@ void initMessage(void)
 	dgkey_store=NULL;
 	message_utf=NULL;
 	sockfd=-1;
+	json_content=NULL;
 	xSemaphore_Message = NULL;
 }
 
@@ -694,19 +702,23 @@ void messageTimerReset(TimerHandle_t xTimer)
 
 void messageReset( uint8_t exit )
 {
+	ESP_LOGI(TAG,"Enter in reset");
 	my_disconnect(sockfd,ssl);
 	my_free(&content);
 	my_free(&request);
 	my_free(&data);
 	my_free(&message_utf);
+	ESP_LOGI(TAG,"before json delete");
 	if(json_content!=NULL)
 	{
 		cJSON_Delete(json_content);
 		json_content=NULL;
 	}
+	ESP_LOGI(TAG,"Before exit");
 	if(exit)
 	{
 		if(messageTimer!=NULL) xTimerStop(messageTimer, 0);
 		if(xSemaphore_Message!=NULL) xSemaphoreGive(xSemaphore_Message);
 	}
+	ESP_LOGI(TAG,"Exit from messageReset");
 }

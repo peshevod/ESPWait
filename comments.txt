@@ -21,3 +21,8 @@ After #if defined(WOLFSSL_ESPIDF) comment out #define NO_WOLFSSL_DIR
 	 wolfTLSv1_2_client_method() -> wolfTLSv1_3_client_method()
 7. Component my_server: in CMakeLists.txt change INCLUDE_DIRS to correct paths
 8. build\CMakeFiles\3.16.4\CMakeSystem.cmake: include(.../tools/cmake/toolchain-esp32.cmake) change to correct esp-idf directory. 
+9. Espressif/esp-idf/components/esp-tls/CMakeLists.txt: change file esp_tls_wolfssl.c:
+	if(CONFIG_ESP_TLS_USING_WOLFSSL)
+    	list(APPEND srcs
+       		"c:/Users/ilya/Eclipse/eclipse-workspace/ESPWait/components/my_server/esp_tls_wolfssl.c")
+	endif()
