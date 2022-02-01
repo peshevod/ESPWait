@@ -13,6 +13,7 @@
 #include "crypto.h"
 #include "users.h"
 #include "cmd_nvs.h"
+#include "message.h"
 
 static const char *TAG = "storage";
 sdmmc_card_t* card;
@@ -22,6 +23,8 @@ TaskHandle_t messageTaskHandle=NULL;
 NetworkSession_t* networkSession;
 Data_t* data;
 extern uint8_t smt_running;
+extern TaskHandle_t messageTask;
+messageParams_t messageParams;
 
 
 void messagePrepare( TimerHandle_t xTimer );
@@ -147,30 +150,14 @@ void messagePrepare( TimerHandle_t xTimer )
 	} else sensor2_message[0]=0;
 	if(sensor1_message[0] || sensor2_message[0])
 	{
-		for(uint8_t k=0;k<8;k++)
-		{
-			if(networkSession->endDevice->users[k])
-			{
-				sprintf(uname,"USR%d",networkSession->endDevice->users[k]);
-				if(Read_str_params(uname, devUser, PAR_STR_MAX_SIZE)==ESP_OK)
-				{
-					ESP_LOGI(TAG,"User %s",devUser);
-					if(messageTaskHandle!=NULL)
-					{
-						e=eTaskGetState(messageTaskHandle);
-						if(e==eRunning) ESP_LOGI(TAG,"messageHandleTask state eRunning");
-						if(e==eBlocked) ESP_LOGI(TAG,"messageHandleTask state eBlocked");
-						if(e==eDeleted) ESP_LOGI(TAG,"messageHandleTask state eDeleted");
-						if(e==eInvalid) ESP_LOGI(TAG,"messageHandleTask state eInvalid");
-						if(e!=eRunning && e!=eBlocked) messageTaskHandle=NULL;
-					}
-					if(messageTaskHandle==NULL) messageTaskHandle=sendMessage(devUser,"Alarm from ESPWait!",sensor1_message,sensor2_message);
-					else ESP_LOGI(TAG,"Task handle busy");
-				}
-			}
-		}
+		memcpy(messageParams.users,networkSession->endDevice->users,8);
+		messageParams.retries=3;
+		strcpy(messageParams.messageTitle,"SecureHome Alarm!");
+		strcpy(messageParams.messageBody,sensor1_message);
+		if(sensor1_message[0] && sensor2_message[0]) strcat(messageParams.messageBody," and ");
+		strcat(messageParams.messageBody,sensor2_message);
+		xTaskCreatePinnedToCore(sendMessageTask, "sendMessage task", 12000, (void*)(&messageParams), 5, &messageTask,0);
 	}
-	xTimerStop(messageTimer, 0);
 }
 
 

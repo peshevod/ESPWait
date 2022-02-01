@@ -9,6 +9,7 @@
 
 #define WOLFSSL_MAX_STRENGTH
 #define WOLFSSL_TLS13
+#define WOLFSSL_EITHER_SIDE
 
 4. File d:\Espressif\esp-wolfssl\wolfssl\wolfssl\wolfcrypt\settings.h
 After #if defined(WOLFSSL_ESPIDF) comment out #define NO_WOLFSSL_DIR

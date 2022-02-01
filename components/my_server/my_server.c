@@ -40,10 +40,12 @@ dev_dgkey_t dev_dgkey;
 extern SemaphoreHandle_t xSemaphore_DG;
 extern SemaphoreHandle_t xSemaphore_Message;
 extern WOLFSSL_CTX* ctx;
+extern TaskHandle_t messageTask;
 extern const unsigned char cacert_pem_start[] asm("_binary_mm304_asuscomm_com_der_start");
 extern const unsigned char cacert_pem_end[]   asm("_binary_mm304_asuscomm_com_der_end");
 extern const unsigned char prvtkey_pem_start[] asm("_binary_mm304_asuscomm_com_key_start");
 extern const unsigned char prvtkey_pem_end[]   asm("_binary_mm304_asuscomm_com_key_end");
+char* device_token=NULL;
 
 #define FILE_PATH_MAX (ESP_VFS_PATH_MAX + 128)
 #define SCRATCH_BUFSIZE (1280)
@@ -110,16 +112,16 @@ static void print_headers(httpd_req_t *req)
 static esp_err_t rest_common_get_handler(httpd_req_t *req)
 {
     char filepath[FILE_PATH_MAX];
-    uint8_t k=0;
+//    uint8_t k=0;
 
 	print_headers(req);
 
-	int fd0=httpd_req_to_sockfd(req);
+//	int fd0=httpd_req_to_sockfd(req);
     struct httpd_req_aux *ra = req->aux;
     struct sock_db *sd=ra->sd;
     esp_tls_t* tls=sd->transport_ctx;
     WOLFSSL* ssl=tls->priv_ssl;
-    ProtocolVersion version,chVersion;
+//    ProtocolVersion version,chVersion;
     ESP_LOGI(TAG,"Common Get Handler Connection state=%d fd=%d is_tls=%s ver=%hhd.%hhd client hello ver=%hhd.%hhd",tls->conn_state,sd->fd, (tls->is_tls ? "TLS" : "non-TLS"),ssl->version.major,ssl->version.minor,ssl->chVersion.major,ssl->chVersion.minor);
 
     rest_server_context_t *rest_context = *((rest_server_context_t**)(req->user_ctx));
@@ -271,7 +273,7 @@ static esp_err_t login_get_handler(httpd_req_t *req)
     int n;
     uint8_t j;
     uint32_t m;
-    uint8_t k=0;
+//    uint8_t k=0;
 
 	ESP_LOGI(TAG,"login handler");
 
@@ -667,31 +669,30 @@ static esp_err_t monitor_post_handler(httpd_req_t *req)
     ESP_LOGI(TAG,"sw=%s",sw);
     if(!strcmp(sw,"token"))
     {
-    	char* token=malloc(req->content_len+1);
-    	if((err=httpd_req_recv(req, token, req->content_len))<0)
+    	device_token=malloc(req->content_len+1);
+    	if((err=httpd_req_recv(req, device_token, req->content_len))<0)
     	{
 			ESP_LOGE(TAG,"Error get content len=%d %s",req->content_len, esp_err_to_name(err));
 			httpd_resp_send_err(req,500,"Bad Content string");
 			return ESP_FAIL;
     	}
-    	token[req->content_len]=0;
-    	ESP_LOGI(TAG,"Get content=%s",token);
-    	if((xSemaphore_Message=xSemaphoreCreateBinary())==NULL) ESP_LOGE(TAG,"Unable to create DG semaphore");
-		if(xSemaphore_Message!=NULL) xSemaphoreGive(xSemaphore_Message);
+    	device_token[req->content_len]=0;
+    	ESP_LOGI(TAG,"Get content=%s",device_token);
 //    	xSemaphore_DG=NULL;
-    	dev_dgkey.device_token=token;
-    	if(token[0]=='-')
+    	dev_dgkey.device_token=device_token;
+    	if(device_token[0]=='-')
     	{
-    		xTaskCreatePinnedToCore(removeFromDG, "removeFromDG", 8192, (void*)(&dev_dgkey), 5, &xHandle,0);
+    		xTaskCreatePinnedToCore(removeFromDG, "removeFromDG", 8192, (void*)(&dev_dgkey), 5, &messageTask,0);
     	}
     	else
     	{
-    		xTaskCreatePinnedToCore(addToDG, "addToDG", 8192, (void*)(&dev_dgkey), 5, &xHandle,0);
+    		xTaskCreatePinnedToCore(addToDG, "addToDG", 8192, (void*)(&dev_dgkey), 5, &messageTask,0);
     	}
 		vTaskDelay(10/portTICK_PERIOD_MS);
     	if(xSemaphoreTake(xSemaphore_Message,15000/portTICK_PERIOD_MS)==pdTRUE) ret=0;
     	else ret=-1;
-    	if(xSemaphore_Message!=NULL) vSemaphoreDelete(xSemaphore_Message);
+		if(xSemaphore_Message!=NULL) xSemaphoreGive(xSemaphore_Message);
+//    	ret=0;
     	if(ret==0)
     	{
     		ESP_LOGI(TAG,"Successfully added/removed device token to/from group");

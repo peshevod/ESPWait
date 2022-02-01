@@ -20,6 +20,7 @@
 #include "freertos/task.h"
 #include "MainLoop.h"
 #include "storage.h"
+#include "users.h"
 
 
 #ifdef	__cplusplus
@@ -561,7 +562,7 @@ typedef struct
 //	uint8_t number_in_flash;
 	uint8_t version;
 	char Name[16];
-	uint8_t users[8];
+	uint8_t users[MAX_USERS];
 	DeviceAddress_t devAddr;
 } EndDevice_t;
 

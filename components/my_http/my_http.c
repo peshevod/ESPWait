@@ -31,9 +31,11 @@
 #include "my_http.h"
 
 static const char TAG[]="my_http.c";
-static uint8_t context_created=0;
-WOLFSSL_METHOD* method;
+//static uint8_t context_created=0;
+static WOLFSSL_METHOD* method;
+char xx[1024];
 WOLFSSL_CTX* my_ctx=NULL;
+char yy[1024];
 extern const unsigned char cacert_pem_start[] asm("_binary_mm304_asuscomm_com_der_start");
 extern const unsigned char cacert_pem_end[]   asm("_binary_mm304_asuscomm_com_der_end");
 extern const unsigned char prvtkey_pem_start[] asm("_binary_mm304_asuscomm_com_key_start");
@@ -141,6 +143,7 @@ char* rawRead(WOLFSSL* ssl, int* content_len)
     char buf[512];
     int ret, len, len0;
     char* data=NULL;
+    size_t dsz=0;
 
     len0 = sizeof(buf);
 	bzero(buf, sizeof(buf));
@@ -223,13 +226,16 @@ char* rawRead(WOLFSSL* ssl, int* content_len)
 					if(strstr(header,"Transfer-Encoding:") && strstr(header, "chunked"))  // transfer to chunked mode and allocate space
 					{
 						chunked=1;
-						data=malloc(MAX_CONTENT_LENGTH+1);
+						dsz=MAX_CONTENT_LENGTH+1;
+						data=malloc(dsz);
+
 //						ESP_LOGI(TAG,"Set chunked");
 					}
 					if((contl_head=(strstr(header,"Content-Length: ")))) // allocate space if content-length header exists
 					{
 						n=atoi(&contl_head[16]);
-						data=malloc(n+1);
+						dsz=n+1;
+						data=malloc(dsz);
 					}
 					header_len=0; // zero header length for next header
 				}
@@ -265,7 +271,11 @@ char* rawRead(WOLFSSL* ssl, int* content_len)
 					{
 						memcpy(&data[*content_len],start,len); // copy data in content mode
 						*content_len+=len; // calculate copied content length
-						if(n==*content_len) return data; // return if all content copied
+						if(n==*content_len)
+						{
+							if(*content_len>dsz) ESP_LOGE(TAG,"!!! Size of data %d > %d",*content_len,dsz);
+							return data; // return if all content copied
+						}
 					}
 				}
 				prev='\n';
@@ -306,6 +316,7 @@ char* rawRead(WOLFSSL* ssl, int* content_len)
 			}
 		} else offset=0;
 	} while (1);
+	if(*content_len>dsz) ESP_LOGE(TAG,"!!! size of data %d > %d",*content_len,dsz);
 	return data;
 }
 
@@ -393,7 +404,7 @@ int my_connect(const char* host, WOLFSSL** ssl)
 		ESP_LOGE(TAG,"Error connect %d ",ret);
 		ret=-6;
 		goto exit;
-	}
+	} else ESP_LOGI(TAG,"Socket ssl connected to host %s",host);
 	return sockfd;
 exit:
 	if((*ssl)!=NULL)

@@ -120,7 +120,8 @@ esp_err_t esp_create_wolfssl_handle(const char *hostname, size_t hostlen, const 
         goto exit;
     }
 */
-
+	tls->role = ESP_TLS_SERVER;
+/*
     if (tls->role == ESP_TLS_CLIENT) {
         esp_ret = set_client_config(hostname, hostlen, (esp_tls_cfg_t *)cfg, tls);
         if (esp_ret != ESP_OK) {
@@ -128,6 +129,7 @@ esp_err_t esp_create_wolfssl_handle(const char *hostname, size_t hostlen, const 
             goto exit;
         }
     } else if (tls->role == ESP_TLS_SERVER) {
+*/
 #ifdef CONFIG_ESP_TLS_SERVER
         esp_ret = set_server_config((esp_tls_cfg_server_t *) cfg, tls);
         if (esp_ret != ESP_OK) {
@@ -138,12 +140,13 @@ esp_err_t esp_create_wolfssl_handle(const char *hostname, size_t hostlen, const 
         ESP_LOGE(TAG, "ESP_TLS_SERVER Not enabled in menuconfig");
         goto exit;
 #endif
+/*
     }
     else {
         ESP_LOGE(TAG, "tls->role is not valid");
         goto exit;
     }
-
+*/
     return ESP_OK;
 exit:
     esp_wolfssl_cleanup(tls);
@@ -434,9 +437,9 @@ void esp_wolfssl_cleanup(esp_tls_t *tls)
     wolfSSL_shutdown( (WOLFSSL *)tls->priv_ssl);
     wolfSSL_free( (WOLFSSL *)tls->priv_ssl);
     tls->priv_ssl = NULL;
-    wolfSSL_CTX_free( (WOLFSSL_CTX *)tls->priv_ctx);
-    tls->priv_ctx = NULL;
-    wolfSSL_Cleanup();
+//    wolfSSL_CTX_free( (WOLFSSL_CTX *)tls->priv_ctx);
+//    tls->priv_ctx = NULL;
+//    wolfSSL_Cleanup();
 }
 
 #ifdef CONFIG_ESP_TLS_SERVER

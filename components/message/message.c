@@ -48,39 +48,31 @@ extern char *project_id;
 extern char* sender_id;
 extern char* api_key;
 char user[USERNAME_MAX];
-char* messageTitle;
-char messageBody[128];
 const char fcm[]="fcm.googleapis.com";
-SemaphoreHandle_t xSemaphore1 = NULL;
 SemaphoreHandle_t xSemaphore_Message = NULL;
-char* newdgkey=NULL;
 char* dgkey_store=NULL;
-extern httpd_handle_t my_server_handle;
 static TimerHandle_t messageTimer;
 char* content=NULL;
 char* request=NULL;
 WOLFSSL* ssl=NULL;
 char* access_token;
-//char* dgkey;
-char* data;
+char* rdata;
 char* message_utf;
 cJSON *json_content;
 int sockfd;
 TaskHandle_t messageTask = NULL;
 TaskHandle_t xHandle1 = NULL;
 
-static void sendMessageTask(void* pvParameters)
+void sendMessageTask(void* pvParameters)
 {
-    char uname[USERNAME_MAX+8];
+//    char uname[USERNAME_MAX+8];
     int csz=3000;
     int hsz=2048;
     int content_len;
+    int request_len;
     int ret;
-    esp_err_t err;
 	char uri[128];
-	char user_token[MAX_DEVICE_TOKEN_LENGTH];
-	int request_len;
-	int retries=3;
+	messageParams_t* messageParams=(messageParams_t*)pvParameters;
 	char* dgkey;
 
 	xTimerStart(messageTimer,0);
@@ -89,7 +81,6 @@ static void sendMessageTask(void* pvParameters)
     	ESP_LOGE(TAG,"MessageSendTask Semaphore closed");
     	vTaskDelete(NULL);
 	}
-	retries=*((int*)pvParameters);
 	ESP_LOGI(TAG,"Begin SendMessageTask");
 begin:
 
@@ -124,13 +115,15 @@ begin:
 	strcpy(content,"{\"message\":{\"token\":\"");
 	strcat(content,dgkey);
 	strcat(content,"\",\"notification\":{\"body\":\"");
-	message_utf=w1251toutf(messageBody);
+	message_utf=w1251toutf(messageParams->messageBody);
 	strcat(content,message_utf);
 	free(message_utf);
+	message_utf=NULL;
 	strcat(content,"\",\"title\":\"");
-	message_utf=w1251toutf(messageTitle);
+	message_utf=w1251toutf(messageParams->messageTitle);
 	strcat(content,message_utf);
 	free(message_utf);
+	message_utf=NULL;
 	strcat(content, "\"}}}");
 	content_len=strlen(content);
 
@@ -143,7 +136,7 @@ begin:
 	ESP_LOGI(TAG,"Request=%s",request);
 	ESP_LOGI(TAG,"Content=%s",content);
 
-	ret=rawWrite(ssl,request,strlen(request));
+	ret=rawWrite(ssl,request,request_len);
 	if(ret<0)
 	{
 		ret=-6;
@@ -158,13 +151,13 @@ begin:
 	}
 
 	content_len=0;
-	if((data=rawRead(ssl, &content_len))!=NULL)
+	if((rdata=rawRead(ssl, &content_len))!=NULL)
 	{
-		data[content_len]=0;
-		ESP_LOGI(TAG, "Received data=%s",data);
+		rdata[content_len]=0;
+		ESP_LOGI(TAG, "Received data=%s",rdata);
 	} else ESP_LOGE(TAG,"No response!!!");
 
-	json_content = cJSON_Parse(data);
+	json_content = cJSON_Parse(rdata);
 	if(json_content!=NULL)
 	{
 		cJSON* par = cJSON_GetObjectItemCaseSensitive(json_content,"name");
@@ -190,14 +183,15 @@ begin:
 
 exit:
 	messageReset(0);
-	if(ret!=0 && --retries>0)
+	if(ret!=0 && --(messageParams->retries)>0)
 	{
 		vTaskDelay(3000);
 		goto begin;
 	}
     ESP_LOGI(TAG,"exit from sendMessageTask FREE=%d",xPortGetFreeHeapSize());
-	if(xSemaphoreGive(xSemaphore1)==pdTRUE) ESP_LOGI(TAG,"-------------------------------------Success give 1");
-	*((int*)pvParameters)=ret;
+	if(messageTimer!=NULL) xTimerStop(messageTimer, 0);
+	if(xSemaphoreGive(xSemaphore_Message)==pdTRUE) ESP_LOGI(TAG,"Success give Semaphore 1");
+	messageParams->ret=ret;
 	vTaskDelete(NULL);
 }
 
@@ -207,11 +201,12 @@ char* getDGKey(void)
     char uri[128];
     int ret=-1;
     int content_len;
-    int req_len;
-    char* err_str=NULL;
+    int request_len;
+    const int rsz=2048;
 	char dgkey_name[MAX_DGKEY_NAME];
-//	char* access_token;
 
+	rdata=NULL;
+	request=NULL;
 	if(dgkey_store!=NULL) return dgkey_store;
 	esp_err_t err=Read_str_params("DGKey_name", dgkey_name, MAX_DGKEY_NAME);
 	if(err!=ESP_OK)
@@ -223,23 +218,23 @@ char* getDGKey(void)
     strcat(uri,fcm);
 	strcat(uri,"/fcm/notification?notification_key_name=");
 	strcat(uri,dgkey_name);
-    request=malloc(2048);
+    request=malloc(rsz);
     sprintf(request,"GET %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: esp-idf/1.0 esp32\r\nContent-Type: application/json\r\nproject_id: %s\r\nAuthorization: key=%s",uri,fcm,sender_id,api_key);
     strcat(request,"\r\n\r\n");
-    req_len=strlen(request);
+    request_len=strlen(request);
+    if(request_len>rsz) ESP_LOGE(TAG,"!!! Error size of request %d > %d",request_len,rsz);
+    else ESP_LOGI(TAG,"Request len %d Request=%s",request_len,request);
 
     sockfd=my_connect(fcm,&ssl);
     if(sockfd<0) goto exit;
 
-    ESP_LOGI(TAG,"Request len %d Request=%s",req_len,request);
-
-    ret=rawWrite(ssl,request,req_len);
+    ret=rawWrite(ssl,request,request_len);
     if(ret<0) goto exit;
 
-    if((data=rawRead(ssl, &content_len))!=NULL)
+    if((rdata=rawRead(ssl, &content_len))!=NULL)
     {
-    	data[content_len]=0;
-    	ESP_LOGI(TAG, "Received data=%s",data);
+    	rdata[content_len]=0;
+    	ESP_LOGI(TAG, "Received data=%s",rdata);
     }
     else
     {
@@ -247,7 +242,7 @@ char* getDGKey(void)
     	ret=-1;
     	goto exit;
     }
-	json_content = cJSON_Parse(data);
+	json_content = cJSON_Parse(rdata);
 	if(json_content!=NULL)
 	{
 		cJSON* par = cJSON_GetObjectItemCaseSensitive(json_content,"notification_key");
@@ -266,24 +261,23 @@ char* getDGKey(void)
 			ret=-1;
 		}
 		cJSON_Delete(json_content);
+		json_content=NULL;
 	}
 
 exit:
-    my_free(&data);
-    my_free(&request);
-	my_disconnect(sockfd,ssl);
-	if(ret<0) my_free(&dgkey_store);
+	messageReset(0);
+	if(ret<0) my_free((void*)&dgkey_store);
 	return dgkey_store;
 }
 
 char* createDGKey(char* device_token)
 {
     int csz=3000;
-    int hsz=1024;
+    int rsz=1024;
     char uri[128];
     int ret=-1;
     int content_len;
-    int req_len;
+    int request_len;
 	char dgkey_name[MAX_DGKEY_NAME];
 
 	if(device_token==NULL) return NULL;
@@ -291,7 +285,6 @@ char* createDGKey(char* device_token)
 	if(err!=ESP_OK)
 	{
 		ESP_LOGE(TAG,"No DGKey name found");
-		my_free(&device_token);
 		return NULL;
 	}
     content=malloc(csz);
@@ -301,16 +294,18 @@ char* createDGKey(char* device_token)
 	if(device_token[0]=='+') strcat(content,&(device_token[1]));
 	else strcat(content,device_token);
 	strcat(content,"\"]}\r\n");
-	ESP_LOGI(TAG,"Content=%s",content);
 	content_len=strlen(content);
+    if(content_len>csz) ESP_LOGE(TAG,"!!! Content len %d > %d",content_len,csz);
+    else ESP_LOGI(TAG,"Content=%s",content);
 	strcpy(uri,"https://");
     strcat(uri,fcm);
 	strcat(uri,"/fcm/notification");
-    request=malloc(hsz);
+    request=malloc(rsz);
 	sprintf(request,"POST %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: esp-idf/1.0 esp32\r\nContent-Type: application/json\r\nContent-Length: %d\r\nproject_id: %s\r\nAuthorization: key=%s",uri,fcm,content_len,sender_id,api_key);
     strcat(request,"\r\n\r\n");
-    req_len=strlen(request);
-    ESP_LOGI(TAG,"Request=%s",request);
+    request_len=strlen(request);
+    if(request_len>rsz) ESP_LOGE(TAG,"!!! Request len %d > %d",request_len,rsz);
+    else ESP_LOGI(TAG,"Request=%s",request);
 
     sockfd=my_connect(fcm,&ssl);
     if(sockfd<0)
@@ -319,17 +314,17 @@ char* createDGKey(char* device_token)
     	goto exit;
     }
 
-    ret=rawWrite(ssl,request,req_len);
+    ret=rawWrite(ssl,request,request_len);
     if(ret<0) goto exit;
 
     ret=rawWrite(ssl, content, content_len);
     if(ret<0) goto exit;
 
     content_len=0;
-    if((data=rawRead(ssl, &content_len))!=NULL)
+    if((rdata=rawRead(ssl, &content_len))!=NULL)
     {
-    	data[content_len]=0;
-    	ESP_LOGI(TAG, "Received data=%s",data);
+    	rdata[content_len]=0;
+    	ESP_LOGI(TAG, "Received data=%s",rdata);
     }
     else
     {
@@ -337,7 +332,8 @@ char* createDGKey(char* device_token)
     	goto exit;
     }
 
-	json_content = cJSON_Parse(data);
+	my_free((void*)&dgkey_store);
+    json_content = cJSON_Parse(rdata);
 	if(json_content!=NULL)
 	{
 		cJSON* par = cJSON_GetObjectItemCaseSensitive(json_content,"notification_key");
@@ -358,12 +354,8 @@ char* createDGKey(char* device_token)
 		json_content=NULL;
 	}
 exit:
-	my_free(&content);
-	my_free(&request);
-	my_free(&data);
-	my_free(&device_token);
-	my_disconnect(sockfd,ssl);
-	if(ret<0) free(&dgkey_store);
+	messageReset(0);
+	if(ret<0) my_free((void*)&dgkey_store);
 	return dgkey_store;
 }
 
@@ -374,11 +366,11 @@ void removeFromDG(void* pvParameters)
     char* request=NULL;
     char* content=NULL;
     int csz=1024;
-    int hsz=1024;
+    int rsz=1024;
     char uri[128];
     int ret=-1;
     int content_len;
-    int req_len;
+    int request_len;
 	char dgkey_name[MAX_DGKEY_NAME];
 	dev_dgkey_t* dev_dgkey=(dev_dgkey_t*)pvParameters;
 
@@ -401,31 +393,33 @@ void removeFromDG(void* pvParameters)
 	if(dev_dgkey->device_token[0]=='-') strcat(content,&(dev_dgkey->device_token[1]));
 	else strcat(content,dev_dgkey->device_token);
 	strcat(content,"\"]}\r\n");
-	ESP_LOGI(TAG,"Content=%s",content);
 	content_len=strlen(content);
+	if(content_len>csz) ESP_LOGE(TAG,"!!! Content len %d > %d",content_len,csz);
+	else ESP_LOGI(TAG,"Content=%s",content);
 	strcpy(uri,"https://");
     strcat(uri,fcm);
 	strcat(uri,"/fcm/notification");
-    request=malloc(hsz);
+    request=malloc(rsz);
 	sprintf(request,"POST %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: esp-idf/1.0 esp32\r\nContent-Type: application/json\r\nContent-Length: %d\r\nproject_id: %s\r\nAuthorization: key=%s",uri,fcm,content_len,sender_id,api_key);
     strcat(request,"\r\n\r\n");
-    req_len=strlen(request);
-    ESP_LOGI(TAG,"Request=%s",request);
+    request_len=strlen(request);
+	if(request_len>rsz) ESP_LOGE(TAG,"!!! Request len %d > %d",request_len,rsz);
+	else ESP_LOGI(TAG,"Request=%s",request);
 
     sockfd=my_connect(fcm,&ssl);
     if(sockfd<0) goto exit;
 
-    ret=rawWrite(ssl,request,req_len);
+    ret=rawWrite(ssl,request,request_len);
     if(ret<0) goto exit;
 
     ret=rawWrite(ssl, content, content_len);
     if(ret<0) goto exit;
 
     content_len=0;
-    if((data=rawRead(ssl, &content_len))!=NULL)
+    if((rdata=rawRead(ssl, &content_len))!=NULL)
     {
-    	data[content_len]=0;
-    	ESP_LOGI(TAG, "Received data=%s",data);
+    	rdata[content_len]=0;
+    	ESP_LOGI(TAG, "Received data=%s",rdata);
     }
     else
     {
@@ -433,10 +427,10 @@ void removeFromDG(void* pvParameters)
     	goto exit;
     }
 
-	json_content = cJSON_Parse(data);
+	json_content = cJSON_Parse(rdata);
 	if(json_content!=NULL)
 	{
-		my_free(&dgkey_store);
+		my_free((void*)&dgkey_store);
 		cJSON* par = cJSON_GetObjectItemCaseSensitive(json_content,"notification_key");
 		if(par!=NULL && cJSON_IsString(par) && par->valuestring!=NULL )
 		{
@@ -457,7 +451,7 @@ void removeFromDG(void* pvParameters)
 		json_content=NULL;
 	}
 exit:
-	my_free(&dev_dgkey->device_token);
+	my_free((void*)&dev_dgkey->device_token);
 	messageReset(1);
 	vTaskDelete(NULL);
 }
@@ -465,11 +459,11 @@ exit:
 void addToDG(void* pvParameters)
 {
     int csz=1024;
-    int hsz=1024;
+    int rsz=1024;
     char uri[128];
     int ret=-1;
     int content_len;
-    int req_len;
+    int request_len;
 	char dgkey_name[MAX_DGKEY_NAME];
 	dev_dgkey_t* dev_dgkey=(dev_dgkey_t*)pvParameters;
 
@@ -504,16 +498,18 @@ void addToDG(void* pvParameters)
 	if(dev_dgkey->device_token[0]=='+') strcat(content,&(dev_dgkey->device_token[1]));
 	else strcat(content,dev_dgkey->device_token);
 	strcat(content,"\"]}\r\n");
-	ESP_LOGI(TAG,"Content=%s",content);
 	content_len=strlen(content);
+	if(content_len>csz) ESP_LOGE(TAG,"!!! Content len %d > %d",content_len,csz);
+	else ESP_LOGI(TAG,"Content=%s",content);
 	strcpy(uri,"https://");
     strcat(uri,fcm);
 	strcat(uri,"/fcm/notification");
-    request=malloc(hsz);
+    request=malloc(rsz);
 	sprintf(request,"POST %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: esp-idf/1.0 esp32\r\nContent-Type: application/json\r\nContent-Length: %d\r\nproject_id: %s\r\nAuthorization: key=%s",uri,fcm,content_len,sender_id,api_key);
     strcat(request,"\r\n\r\n");
-    req_len=strlen(request);
-    ESP_LOGI(TAG,"Request=%s",request);
+    request_len=strlen(request);
+	if(request_len>rsz) ESP_LOGE(TAG,"!!! Request len %d > %d",request_len,rsz);
+	else ESP_LOGI(TAG,"Request=%s",request);
 
     sockfd=my_connect(fcm,&ssl);
     if(sockfd<0)
@@ -522,17 +518,17 @@ void addToDG(void* pvParameters)
     	goto exit;
     }
 
-    ret=rawWrite(ssl,request,req_len);
+    ret=rawWrite(ssl,request,request_len);
     if(ret<0) goto exit;
 
     ret=rawWrite(ssl, content, content_len);
     if(ret<0) goto exit;
 
     content_len=0;
-    if((data=rawRead(ssl, &content_len))!=NULL)
+    if((rdata=rawRead(ssl, &content_len))!=NULL)
     {
-    	data[content_len]=0;
-    	ESP_LOGI(TAG, "Received data=%s",data);
+    	rdata[content_len]=0;
+    	ESP_LOGI(TAG, "Received data=%s",rdata);
     }
     else
     {
@@ -540,10 +536,10 @@ void addToDG(void* pvParameters)
     	goto exit;
     }
 
-	json_content = cJSON_Parse(data);
+	json_content = cJSON_Parse(rdata);
 	if(json_content!=NULL)
 	{
-		my_free(&dgkey_store);
+		my_free((void*)&dgkey_store);
 		cJSON* par = cJSON_GetObjectItemCaseSensitive(json_content,"notification_key");
 		if(par!=NULL && cJSON_IsString(par) && par->valuestring!=NULL )
 		{
@@ -564,14 +560,14 @@ void addToDG(void* pvParameters)
 		json_content=NULL;
 	}
 exit:
-	my_free(&dev_dgkey->device_token);
+	my_free((void*)&dev_dgkey->device_token);
 	messageReset(1);
 	vTaskDelete(NULL);
 }
 
 void DGTask(void)
 {
-	char* dgkey=NULL;
+//	char* dgkey=NULL;
 //	if(xSemaphoreGive(xSemaphore)==pdTRUE) ESP_LOGI(TAG,"DGTASK Success give");
 //	else ESP_LOGE(TAG,"DGTASK Error give");
 	ESP_LOGI(TAG,"Enter in DGTask");
@@ -593,55 +589,6 @@ void DGTask(void)
 		if(xSemaphoreGive(xSemaphore_Message)==pdTRUE) ESP_LOGI(TAG,"-----------------Success give");
 //	} else ESP_LOGE(TAG,"DGTask semaphore error");
 	vTaskDelete(NULL);
-}
-
-TaskHandle_t sendMessage(char* user0, char* messageTitle0, char* messageBody0, char* messageBody1)
-{
-	strcpy(user,user0);
-	int volatile retries=3;
-	messageTitle=messageTitle0;
-	strcpy(messageBody,messageBody0);
-	if(messageBody0[0] && messageBody1[0]) strcat(messageBody," and ");
-	strcat(messageBody,messageBody1);
-	int ret=-1;
-
-	if((xSemaphore_Message=xSemaphoreCreateBinary())==NULL)
-	{
-		ESP_LOGE(TAG,"Unable to create semaphore");
-		ret=-1;
-		goto exit;
-	}
-//	if(xSemaphoreGive(xSemaphore)==pdTRUE) ESP_LOGI(TAG,"Success give");
-	if((xSemaphore1=xSemaphoreCreateBinary())==NULL)
-	{
-		ESP_LOGE(TAG,"Unable to create semaphore1");
-		ret=-2;
-		goto exit;
-	}
-	ESP_LOGI(TAG,"Proceeding mes1 %s and mes2 %s to user %s",messageBody0,messageBody1,user0);
-//	xTaskCreatePinnedToCore(DGTask, "DG_request task", 12000, NULL, 5, &xHandle1,0);
-	if(xSemaphore_Message!=NULL && xSemaphoreGive(xSemaphore_Message)==pdTRUE) ESP_LOGI(TAG,"-----------------Success give");
-	else
-	{
-		ESP_LOGE(TAG,"Error in give Semaphore");
-		ret=-3;
-		goto exit;
-	}
-	xTaskCreatePinnedToCore(sendMessageTask, "https_post_request task", 12000, (void*)(&retries), 5, &messageTask,0);
-//	if(retries>0) vTaskDelay(100/portTICK_PERIOD_MS);
-	if(xSemaphore1!=NULL && xSemaphoreTake(xSemaphore1,( TickType_t )600000)==pdTRUE)
-	{
-		if(retries==0) ESP_LOGI(TAG,"Message successfully sent");
-		else ESP_LOGE(TAG, "Error %d while sending message",retries);
-	}
-	else
-	{
-		ESP_LOGE(TAG, "Send message task not finished in 10 min, aborted...");
-	}
-exit:
-	if(xSemaphore_Message!=NULL) vSemaphoreDelete(xSemaphore_Message);
-	if(xSemaphore1!=NULL) vSemaphoreDelete(xSemaphore1);
-	return messageTask;
 }
 
 char* w1251toutf(char* w1251)
@@ -682,12 +629,13 @@ void initMessage(void)
 	access_token=NULL;
 	content=NULL;
 	request=NULL;
-	data=NULL;
+	rdata=NULL;
 	dgkey_store=NULL;
 	message_utf=NULL;
 	sockfd=-1;
 	json_content=NULL;
-	xSemaphore_Message = NULL;
+	if((xSemaphore_Message=xSemaphoreCreateBinary())==NULL) ESP_LOGE(TAG,"Unable to create Message semaphore");
+	else xSemaphoreGive(xSemaphore_Message);
 }
 
 void messageTimerReset(TimerHandle_t xTimer)
@@ -704,10 +652,10 @@ void messageReset( uint8_t exit )
 {
 	ESP_LOGI(TAG,"Enter in reset");
 	my_disconnect(sockfd,ssl);
-	my_free(&content);
-	my_free(&request);
-	my_free(&data);
-	my_free(&message_utf);
+	my_free((void*)&content);
+	my_free((void*)&request);
+	my_free((void*)&rdata);
+	my_free((void*)&message_utf);
 	ESP_LOGI(TAG,"before json delete");
 	if(json_content!=NULL)
 	{
