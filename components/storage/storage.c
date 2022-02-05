@@ -18,7 +18,7 @@
 static const char *TAG = "storage";
 sdmmc_card_t* card;
 static DIR* rootDir;
-TimerHandle_t messageTimer;
+TimerHandle_t sendMessageTimer;
 TaskHandle_t messageTaskHandle=NULL;
 NetworkSession_t* networkSession;
 Data_t* data;
@@ -75,7 +75,7 @@ bool init_sdmmc(void)
     // Card has been initialized, print its properties
     sdmmc_card_print_info(stdout, card);
     rootDir=opendir(MOUNT_POINT);
-    messageTimer=xTimerCreate("messageTimer", 2000 / portTICK_PERIOD_MS, pdFALSE, (void*) MESSAGE_TIMER, messagePrepare);
+    sendMessageTimer=xTimerCreate("messageTimer", 2000 / portTICK_PERIOD_MS, pdFALSE, (void*) MESSAGE_TIMER, messagePrepare);
     return true;
 }
 
@@ -118,15 +118,8 @@ void writeData(void* pvParams)
 	else ESP_LOGE(TAG, "Failed to open file %s for writing",filename);
 	if(f!=NULL) fclose(f);
 
-	xTimerReset(messageTimer, 0);
+	xTimerReset(sendMessageTimer, 0);
 
-	/*char* token=malloc(1024);
-	esp_err_t err;
-	if((err=Read_str_params("ilya_token",token, 1024))!=ESP_OK)
-	{
-		ESP_LOGE(TAG,"Error reading user token %s", esp_err_to_name(err));
-	} else ESP_LOGI(TAG,"User token=%s",token);
-    free(token);*/
 	vTaskDelete(NULL);
 }
 
@@ -137,7 +130,7 @@ void messagePrepare( TimerHandle_t xTimer )
     char devUser[USERNAME_MAX];
     char sensor1_message[64],sensor2_message[64];
     eTaskState e;
-    ESP_LOGI(TAG,"Enter in messagePrepare");
+    ESP_LOGI(TAG,"---Enter in messagePrepare Free=FREE=%d",xPortGetFreeHeapSize());
     if(data->sensors.sensor1_mode&SENSOR_MODE_ENABLE && data->sensors.sensor1_mode&SENSOR_MODE_TRIGGER && data->sensors.sensor1_evt && data->sensors.sensor1_evt)
 //		if(data->sensors.sensor1_mode&SENSOR_MODE_ENABLE && data->sensors.sensor1_mode&SENSOR_MODE_TRIGGER && ( (data->sensors.sensor1_cur && data->sensors.sensor1_mode&SENSOR_MODE_TRIGGER) || (!data->sensors.sensor1_cur && !(data->sensors.sensor1_mode&SENSOR_MODE_TRIGGER)) ))
 	{
@@ -156,7 +149,7 @@ void messagePrepare( TimerHandle_t xTimer )
 		strcpy(messageParams.messageBody,sensor1_message);
 		if(sensor1_message[0] && sensor2_message[0]) strcat(messageParams.messageBody," and ");
 		strcat(messageParams.messageBody,sensor2_message);
-		xTaskCreatePinnedToCore(sendMessageTask, "sendMessage task", 12000, (void*)(&messageParams), 5, &messageTask,0);
+		xTaskCreatePinnedToCore(sendMessageTask, "sendMessage task", 8192, (void*)(&messageParams), 5, &messageTask,0);
 	}
 }
 

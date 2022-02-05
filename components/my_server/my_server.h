@@ -21,8 +21,8 @@ extern "C" {
 #define MY_SERVER_LOCAL_TCP_PORT   443
 #define MY_SERVER_AUTHORIZATION_MAX 512
 
-httpd_handle_t start_my_server(void);
-void stop_my_server(httpd_handle_t my_server);
+void start_my_server(void);
+void stop_my_server(void);
 
 
 #ifdef __cplusplus

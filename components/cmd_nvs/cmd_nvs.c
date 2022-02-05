@@ -26,6 +26,7 @@
 #include "crypto.h"
 #include "shell.h"
 #include "device.h"
+#include "message.h"
 
 
 const _par_t _pars[]={
@@ -89,7 +90,7 @@ const _par_t _pars[]={
 	{PAR_STR,"FirstName1",{.str="Ilya"},"user1 First Name",VISIBLE},
 	{PAR_STR,"LastName1",{.str="Shugalev"},"user1 Last Name",VISIBLE},
 	{PAR_STR,"PWD1",{.str="songsong"},"user1 password",VISIBLE},
-	{PAR_STR,"DGKey_name",{.str="test3Pushexample_dgkey_000"},"Device Group Key Name",VISIBLE},
+//	{PAR_STR,"DGKey_name",{.str="test3Pushexample_dgkey_000"},"Device Group Key Name",VISIBLE},
 	{0,NULL,{0},NULL,HIDDEN}
 };
 
@@ -110,6 +111,7 @@ esp_err_t Sync_EEPROM(void)
     const _par_t* __pars=_pars;
     esp_err_t err;
     uint8_t v8;
+	char dgkey_name[MAX_DGKEY_NAME];
 
     if((err=nvs_flash_init_partition(params_partition))!=ESP_OK) ESP_LOGE(TAG,"nvs_flash_init_partition %s result=%s",params_partition, esp_err_to_name(err));
 
@@ -245,7 +247,13 @@ esp_err_t Sync_EEPROM(void)
 			}
 		}
 	}
-	if(!v8) nvs_set_u8(nvs,"params",1);
+	if(!v8)
+	{
+		nvs_set_u8(nvs,"params",1);
+		sprintf(dgkey_name,"ESPWait_%2x%2x%2x%2x%2x%2x_dgkey",mac[0],mac[1],mac[2],mac[3],mac[4],mac[5]);
+		nvs_set_str(nvs,"DGKey_name",dgkey_name);
+		ESP_LOGI(TAG,"Set DGKey name=%s",dgkey_name);
+	}
 
 	if((err=nvs_commit(nvs))!=ESP_OK)
 	{
@@ -398,6 +406,7 @@ esp_err_t Write_str_params(const char* key, char* str)
 			free(value);
 			return ESP_OK;
 		}
+		free(value);
 	}
 //	ESP_LOGI(TAG,"Write key %s value %s",key,str);
 	if((err=nvs_set_str(nvs,key,str))!=ESP_OK) ESP_LOGE(TAG, "Error writing str value to nvs err=%s",esp_err_to_name(err));

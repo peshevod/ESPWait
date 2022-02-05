@@ -52,8 +52,7 @@ static TimerHandle_t accessTimer;
 
 void accessReset( TimerHandle_t xTimer )
 {
-	if(access_token!=NULL) free(access_token);
-	access_token=NULL;
+	my_free((void*)&access_token);
 	xTimerStop(accessTimer, 0);
 	ESP_LOGI(TAG,"----------------------- access token expired");
 }
@@ -307,21 +306,18 @@ char* getAccessToken(void)
     int ret;
     int content_len;
     int sockfd=-1;
-    WOLFSSL_CTX* ctx=NULL;
     WOLFSSL* ssl=NULL;
-    WOLFSSL_METHOD* method;
-    struct  sockaddr_in *servAddr;
-    struct addrinfo *addrinfo;
     char* data=NULL;
-//    int ret0=-1;
+    cJSON *json_content=NULL;
 
+	ESP_LOGI(TAG,"Enter in getAccessToken FREE=%d",xPortGetFreeHeapSize());
     if(access_token) return access_token;
 
     //    wolfSSL_Debugging_ON();
 
     ESP_LOGI(TAG,"Getting access token");
 
-    ret=-1;
+    ret=0;
     sockfd=my_connect(oauth2_host,&ssl);
 	if(sockfd<0)
 	{
@@ -360,7 +356,7 @@ char* getAccessToken(void)
     	ESP_LOGI(TAG, "Received data=%s",data);
     };
 
-	cJSON *json_content = cJSON_Parse(data);
+	json_content = cJSON_Parse(data);
 	if(json_content!=NULL)
 	{
 		cJSON* par = cJSON_GetObjectItemCaseSensitive(json_content,"access_token");
@@ -400,6 +396,7 @@ char* getAccessToken(void)
 			goto exit;
 		}
 		cJSON_Delete(json_content);
+		json_content=NULL;
 	}
 	else
 	{
@@ -408,17 +405,16 @@ char* getAccessToken(void)
 	}
 
 exit:
-	if(ret<0 && access_token!=NULL) free(access_token);
-	if(data!=NULL) free(data);
-    if(ssl!=NULL) wolfSSL_free(ssl);
-    if(ctx!=NULL) wolfSSL_CTX_free(ctx);
-//    wolfSSL_Cleanup();
-    if(sockfd!=-1) close(sockfd);
+	if(ret<0) my_free((void*)&access_token);
+	my_free((void*)&content);
+	my_free((void*)&data);
+	my_disconnect(sockfd,ssl);
+	if(json_content!=NULL) cJSON_Delete(json_content);
+	json_content=NULL;
     ESP_LOGI(TAG,"exit from getAcessToken FREE=%d",xPortGetFreeHeapSize());
     if(ret==0)
     {
-//    	xTimerChangePeriod(accessTimer, (expt-10)*1000 / portTICK_PERIOD_MS, 0);
-    	xTimerChangePeriod(accessTimer, 300*1000 / portTICK_PERIOD_MS, 0);
+    	xTimerChangePeriod(accessTimer, (expt-10)*1000 / portTICK_PERIOD_MS, 0);
     	xTimerStart(accessTimer, 0);
     }
     return access_token;

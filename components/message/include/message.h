@@ -19,6 +19,7 @@ typedef struct
 {
 	char* device_token;
 	char* dgkey;
+	uint8_t usernum;
 } dev_dgkey_t;
 
 typedef struct
@@ -31,11 +32,10 @@ typedef struct
 } messageParams_t;
 
 TaskHandle_t sendMessage(char* user0, char* messageTitle0, char* messageBody0, char* messageBody1);
-char* getDGKey(void);
-char* createDGKey(char* device_token);
+char* getDGKey(uint8_t usernum);
+char* createDGKey(char* device_token, uint8_t usernum);
 void removeFromDG(void* pvParameters);
 void addToDG(void* pvParameters);
-char* w1251toutf(char* w1251);
 void messageTimerReset(TimerHandle_t xTimer);
 void messageReset( uint8_t exit );
 void initMessage(void);

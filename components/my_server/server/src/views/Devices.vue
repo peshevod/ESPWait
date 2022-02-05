@@ -363,7 +363,8 @@ export default {
       },
       {
           headers: {
-            'Authorization': 'Bearer ' + this.$store.state.jwt_token
+            'Authorization': 'Bearer ' + this.$store.state.jwt_token,
+            'Content-Type': 'application/json; charset=windows-1251'
           }
       })
       .then ()
@@ -389,7 +390,8 @@ export default {
       },
       {
           headers: {
-            'Authorization': 'Bearer ' + this.$store.state.jwt_token
+            'Authorization': 'Bearer ' + this.$store.state.jwt_token,
+            'Content-Type': 'application/json; charset=windows-1251'
           }
       })
       .then ()      .catch(e => {   

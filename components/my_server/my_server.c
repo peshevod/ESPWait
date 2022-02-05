@@ -25,6 +25,7 @@
 #include "esp_tls.h"
 #include "storage.h"
 #include "message.h"
+#include "converter.h"
 //#include "esp_tls_wolfssl.h"
 
 #define LOG_LOCAL_LEVEL ESP_LOG_VERBOSE
@@ -37,7 +38,6 @@ extern const int8_t txPowerRU864[];
 extern uint8_t number_of_devices;
 extern NetworkSession_t *networkSessions[MAX_NUMBER_OF_DEVICES];
 dev_dgkey_t dev_dgkey;
-extern SemaphoreHandle_t xSemaphore_DG;
 extern SemaphoreHandle_t xSemaphore_Message;
 extern WOLFSSL_CTX* ctx;
 extern TaskHandle_t messageTask;
@@ -46,6 +46,8 @@ extern const unsigned char cacert_pem_end[]   asm("_binary_mm304_asuscomm_com_de
 extern const unsigned char prvtkey_pem_start[] asm("_binary_mm304_asuscomm_com_key_start");
 extern const unsigned char prvtkey_pem_end[]   asm("_binary_mm304_asuscomm_com_key_end");
 char* device_token=NULL;
+static httpd_handle_t my_server;
+
 
 #define FILE_PATH_MAX (ESP_VFS_PATH_MAX + 128)
 #define SCRATCH_BUFSIZE (1280)
@@ -579,6 +581,7 @@ static esp_err_t devices_get_handler(httpd_req_t *req)
     	return ESP_FAIL;
     }
 
+    print_headers(req);
     strcpy(join,"{\"Devices\":[");
     uint8_t usernum=get_user_number(user,role);
     for(uint8_t j=1;j<MAX_NUMBER_OF_DEVICES;j++)
@@ -639,6 +642,7 @@ static esp_err_t devices_get_handler(httpd_req_t *req)
     join[l-1]=0;
     strcat(join,"]}");
     httpd_resp_set_hdr(req, "Access-Control-Allow-Origin" , "*");
+    httpd_resp_set_hdr(req, "Content-Type" , "application/json; charset=windows-1251");
 	httpd_resp_sendstr(req, join);
     return ESP_OK;
 }
@@ -680,6 +684,7 @@ static esp_err_t monitor_post_handler(httpd_req_t *req)
     	ESP_LOGI(TAG,"Get content=%s",device_token);
 //    	xSemaphore_DG=NULL;
     	dev_dgkey.device_token=device_token;
+    	dev_dgkey.usernum=get_user_number(user,role);
     	if(device_token[0]=='-')
     	{
     		xTaskCreatePinnedToCore(removeFromDG, "removeFromDG", 8192, (void*)(&dev_dgkey), 5, &messageTask,0);
@@ -1018,6 +1023,7 @@ static esp_err_t devices_post_handler(httpd_req_t *req)
     	return ESP_FAIL;
     }
 
+    print_headers(req);
     err0=0;
     int data_len=req->content_len;
     if(data_len<2048)
@@ -1087,7 +1093,12 @@ static esp_err_t devices_post_handler(httpd_req_t *req)
 							if(par!=NULL && cJSON_IsString(par) && par->valuestring!=NULL )
 							{
 								sprintf(uname,"Dev%dName",j0);
-								Write_str_params(uname,par->valuestring);
+								char* DevName_w1251=utf8tow1251(par->valuestring);
+								if(DevName_w1251!=NULL)
+								{
+									Write_str_params(uname,DevName_w1251);
+									free(DevName_w1251);
+								}
 							}
 							par = cJSON_GetObjectItemCaseSensitive(json_content,"Version");
 							if(par!=NULL && cJSON_IsString(par) && par->valuestring!=NULL )
@@ -1236,9 +1247,11 @@ static httpd_uri_t monitor_post_uri = {
 };
 
 
-httpd_handle_t start_my_server(void)
+
+
+void start_my_server(void)
 {
-	httpd_handle_t my_server = NULL;
+	my_server = NULL;
     rest_context = calloc(1, sizeof(rest_server_context_t));
     REST_CHECK(rest_context, "No memory for rest context", err_start);
     strlcpy(rest_context->base_path, MOUNT_POINT, sizeof(rest_context->base_path));
@@ -1266,8 +1279,6 @@ httpd_handle_t start_my_server(void)
     conf.prvtkey_len = prvtkey_pem_end - prvtkey_pem_start;
 
     esp_err_t ret = httpd_ssl_start(&my_server, &conf);
-//    ctx=((esp_tls_t*)(conf.httpd.global_transport_ctx))->priv_ctx;
-//    esp_err_t ret = httpd_start(&my_server, &config);
     if (ESP_OK == ret) {
    // Set URI handlers
 		ESP_LOGI(TAG, "Registering URI handlers");
@@ -1283,19 +1294,14 @@ httpd_handle_t start_my_server(void)
 		httpd_register_uri_handler(my_server, &monitor_get_uri);
 		httpd_register_uri_handler(my_server, &monitor_post_uri);
 		httpd_register_uri_handler(my_server, &common_get_uri);
+		return;
     }
-    else
-	{
-    	ESP_LOGI(TAG, "Error starting my_server!");
-    	return NULL;
-	}
-    return my_server;
 err_start:
-        free(rest_context);
-        return NULL;
+	ESP_LOGI(TAG, "Error starting my_server!");
+	free(rest_context);
 }
 
-void stop_my_server(httpd_handle_t my_server)
+void stop_my_server(void)
 {
     // Stop the httpd server
 	    httpd_ssl_stop(my_server);
@@ -1306,18 +1312,18 @@ void stop_my_server(httpd_handle_t my_server)
 static void disconnect_handler(void* arg, esp_event_base_t event_base,
                                int32_t event_id, void* event_data)
 {
-    httpd_handle_t* my_server = (httpd_handle_t*) arg;
-    if (*my_server) {
-        stop_my_server(*my_server);
-        *my_server = NULL;
+    my_server = *((httpd_handle_t*) arg);
+    if (my_server) {
+        stop_my_server();
+        my_server = NULL;
     }
 }
 
 static void connect_handler(void* arg, esp_event_base_t event_base,
                             int32_t event_id, void* event_data)
 {
-    httpd_handle_t* my_server = (httpd_handle_t*) arg;
-    if (*my_server == NULL) {
+    my_server = *((httpd_handle_t*) arg);
+    if (my_server == NULL) {
         start_my_server();
     }
 }

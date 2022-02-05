@@ -88,7 +88,6 @@ static volatile uint8_t ready_to_send=0;
 static volatile uint8_t wifi_stopped;
 static uint8_t only_timer_wakeup=0;
 Profile_t JoinServer;
-httpd_handle_t my_server_handle=NULL;
 
 extern const uint8_t aws_root_ca_pem_start[] asm("_binary_aws_root_ca_pem_start");
 extern const uint8_t aws_root_ca_pem_end[] asm("_binary_aws_root_ca_pem_end");
@@ -155,7 +154,7 @@ static void initialize_nvs()
 void init_uart0()
 {
     uart_config_t uart_config0 = {
-        .baud_rate = 115200,
+        .baud_rate = 460800,
         .data_bits = UART_DATA_8_BITS,
         .parity    = UART_PARITY_DISABLE,
         .stop_bits = UART_STOP_BITS_1,
@@ -781,24 +780,20 @@ static void system_init()
     ESP_LOGI(TAG,"After init_uart FREE=%d",xPortGetFreeHeapSize());
     vTaskDelay(100 / portTICK_PERIOD_MS);
 	ESP_LOGI(TAG, "System init");
-	uint32_t* z=RTC_CNTL_SDIO_CONF_REG;
+/*	uint32_t* z=RTC_CNTL_SDIO_CONF_REG;
     ESP_LOGI(TAG,"RTC_CNTL_SDIO_CONF_REG=0x%08x",*z);
     uint32_t* apb31=APB_CTRL_DATE_REG;
     uint32_t* e20=EFUSE_BLK0_RDATA5_REG;
     uint32_t* e15=EFUSE_BLK0_RDATA3_REG;
     uint32_t e20_1=esp_efuse_read_reg(0,5);
     uint32_t e15_1=esp_efuse_read_reg(0,3);
-    ESP_LOGI(TAG,"apb31=%d e20=%d e20_1=%d e15=%d e15_1=%d",(*apb31&0x80000000)>>31,(*e20&0x00100000)>>20,(e20_1&0x00100000)>>20,(*e15&0x00008000)>>15,(e15_1&0x00008000)>>15);
+    ESP_LOGI(TAG,"apb31=%d e20=%d e20_1=%d e15=%d e15_1=%d",(*apb31&0x80000000)>>31,(*e20&0x00100000)>>20,(e20_1&0x00100000)>>20,(*e15&0x00008000)>>15,(e15_1&0x00008000)>>15);*/
     if((err = nvs_flash_init())!=ESP_OK) ESP_LOGE("main.c","Error while init default nvs err=%s\n",esp_err_to_name(err));
     Sync_EEPROM();
     //    uint8_t x=selectJoinServer((void*)&JoinServer);
     ESP_LOGI(TAG,"After Sync EEPROM FREE=%d",xPortGetFreeHeapSize());
     fill_devices1();
     ESP_LOGI(TAG,"After fill devices FREE=%d",xPortGetFreeHeapSize());
-    get_SHAKey();
-    ESP_LOGI(TAG,"After get SHAKey FREE=%d",xPortGetFreeHeapSize());
-    accessInit();
-    ESP_LOGI(TAG,"After accessInit FREE=%d",xPortGetFreeHeapSize());
 //    getAuthToken();
 //    print_SHAKey(shaKey);
     while(!init_sdmmc())
@@ -818,20 +813,19 @@ static void system_init()
 	}
     ESP_LOGI(TAG,"After wifi FREE=%d",xPortGetFreeHeapSize());
     set_global_sec();
-//   	char user[USERNAME_MAX];
-//   	char role[ROLENAME_MAX];
-//    makeToken(token, sizeof(token), "ilya", 3600, "user");
-//   	if(verifyToken(token,user,role)==ESP_OK) ESP_LOGI(TAG,"Token verified user=%s role=%s",user,role);
+    ESP_LOGI(TAG,"After sntp before start server FREE=%d",xPortGetFreeHeapSize());
 	wolfSSL_Init();
+    ESP_LOGI(TAG,"After wolfSSL_Init FREE=%d",xPortGetFreeHeapSize());
 	getCTX();
+    ESP_LOGI(TAG,"After getCTX FREE=%d",xPortGetFreeHeapSize());
 	initMessage();
-	ESP_LOGI(TAG,"before start server FREE=%d",xPortGetFreeHeapSize());
-    my_server_handle = start_my_server();
+    ESP_LOGI(TAG,"After InitMessage FREE=%d",xPortGetFreeHeapSize());
+    get_SHAKey();
+    ESP_LOGI(TAG,"After get SHAKey FREE=%d",xPortGetFreeHeapSize());
+    accessInit();
+    ESP_LOGI(TAG,"After accessInit FREE=%d",xPortGetFreeHeapSize());
+    start_my_server();
     ESP_LOGI(TAG,"after start server FREE=%d",xPortGetFreeHeapSize());
-    if (my_server_handle ==NULL)  {
-        ESP_LOGI(TAG, "failed to start https server");
-    }
-
 //    EraseKey("ilya_token");
 //    Write_str_params("ilya_token1", "eJ_HGSwFSRKTa2JXtWrzcv:APA91bG6lfzl37qBt1XooXucfLLGBKSatwQMqpdJMlxIFzyo_7f-LIqWAzfIWQ_R39-Dvs95rv2AnHiWUEGgPfcUsll5czM90ndTtMf_1IFqdG9UTDVcTPYwbehTduvNI7_IqzUrUkdQ");
 //    Write_str_params("ilya_token0", "fiwiYgJMRqSuowQ72XM_WY:APA91bFe3w-74KeCmZxUtY64g_fO65REkkQI5efwcOYypjsaqZY5x0JRcS0A8Dr3Zm6ha7hgtgSdieyaQ1lRAImC58lVGwLGiGkQjnKd6jD_DrL0TbX5U4i2YIfsGZKzJ-0gC9TdZUS4");

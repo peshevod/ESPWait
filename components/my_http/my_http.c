@@ -33,9 +33,7 @@
 static const char TAG[]="my_http.c";
 //static uint8_t context_created=0;
 static WOLFSSL_METHOD* method;
-char xx[1024];
 WOLFSSL_CTX* my_ctx=NULL;
-char yy[1024];
 extern const unsigned char cacert_pem_start[] asm("_binary_mm304_asuscomm_com_der_start");
 extern const unsigned char cacert_pem_end[]   asm("_binary_mm304_asuscomm_com_der_end");
 extern const unsigned char prvtkey_pem_start[] asm("_binary_mm304_asuscomm_com_key_start");
@@ -368,12 +366,16 @@ int my_connect(const char* host, WOLFSSL** ssl)
 		goto exit;
 	}
 
-	if((ret=getCTX())<0)
-	{
-		ret=-3;
-		goto exit;
-	}
-	/* make new wolfSSL struct */
+    struct linger linger;
+    linger.l_onoff = 1;
+    linger.l_linger = 0;
+    if (setsockopt(sockfd, SOL_SOCKET, SO_LINGER, &linger, sizeof(linger)) != 0)
+    {
+    	ret=-3;
+    	goto exit;
+    }
+
+    /* make new wolfSSL struct */
 	if ( (*ssl = wolfSSL_new(my_ctx)) == NULL) {
 		ESP_LOGE(TAG,"Err create ssl");
 		ret=-4;
@@ -418,9 +420,17 @@ exit:
 
 void my_disconnect(int sockfd, WOLFSSL* ssl)
 {
-	if(ssl!=NULL) wolfSSL_free(ssl);
-//	wolfSSL_Cleanup();
-	if(sockfd!=-1) close(sockfd);
+	if(ssl!=NULL)
+	{
+	    wolfSSL_shutdown(ssl);
+		wolfSSL_free(ssl);
+		ssl=NULL;
+	}
+	if(sockfd>=0)
+	{
+         close(sockfd);
+         sockfd=-1;
+	}
 }
 
 void my_free(void** x)
