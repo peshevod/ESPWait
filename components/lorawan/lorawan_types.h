@@ -21,6 +21,7 @@
 #include "MainLoop.h"
 #include "storage.h"
 #include "users.h"
+#include "cmd_nvs.h"
 
 
 #ifdef	__cplusplus
@@ -561,7 +562,9 @@ typedef struct
 	uint16_t devNonce;
 //	uint8_t number_in_flash;
 	uint8_t version;
-	char Name[16];
+	char Name[PAR_STR_MAX_SIZE];
+	char Sensor1[PAR_STR_MAX_SIZE];
+	char Sensor2[PAR_STR_MAX_SIZE];
 	uint8_t users[MAX_USERS];
 	DeviceAddress_t devAddr;
 } EndDevice_t;

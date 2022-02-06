@@ -158,6 +158,10 @@ void fill_devices1(void)
 				Read_u8_params(uname,&dev->version);
 				sprintf(uname,"Dev%dName",i+1);
 				Read_str_params(uname,dev->Name,PAR_STR_MAX_SIZE);
+				sprintf(uname,"Dev%ds1",i+1);
+				Read_str_params(uname,dev->Sensor1,PAR_STR_MAX_SIZE);
+				sprintf(uname,"Dev%ds2",i+1);
+				Read_str_params(uname,dev->Sensor2,PAR_STR_MAX_SIZE);
 				sprintf(uname,"Dev%dUsers",i+1);
 				Read_eui_params(uname,dev->users);
 				dev->devNonce=0;

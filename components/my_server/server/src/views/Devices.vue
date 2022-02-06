@@ -28,6 +28,8 @@
                 </v-toolbar>
               </v-row>
               <v-text-field outlined counter maxlength="16" :rules="rules" label="Name" v-model="DevName" class="mx-5"></v-text-field>
+              <v-text-field outlined counter maxlength="16" :rules="rules" label="Sensor1 Name" v-model="Sensor1" class="mx-5"></v-text-field>
+              <v-text-field outlined counter maxlength="16" :rules="rules" label="Sensor2 Name" v-model="Sensor2" class="mx-5"></v-text-field>
               <v-text-field outlined counter maxlength="16" :rules="rules" label="EUI" v-model="DevEUI" class="mx-5"></v-text-field>
               <v-select outlined counter maxlength="32" :rules="rules" label="LoRa Version" :items="Versions" v-model="Version" class="mx-5"></v-select>
               <v-text-field
@@ -79,6 +81,14 @@
 <v-simple-table class="mt-3">
 <template v-slot:default>
 <tbody>
+  <tr>
+    <td><v-chip label class="grey lighten-4">Sensor1 Name</v-chip></td>
+    <td><v-chip label class="blue lighten-5">{{Device.Sensor1}}</v-chip></td>
+  </tr>
+  <tr>
+    <td><v-chip label class="grey lighten-4">Sensor2 Name</v-chip></td>
+    <td><v-chip label class="blue lighten-5">{{Device.Sensor2}}</v-chip></td>
+  </tr>
   <tr>
     <td><v-chip label class="grey lighten-4">EUI</v-chip></td>
     <td><v-chip label class="blue lighten-5">{{Device.DevEUI}}</v-chip></td>
@@ -132,6 +142,8 @@
                   <v-container>
                     <v-card class="d-flex justify-center flex-column pa-5">
                       <v-text-field outlined counter maxlength="16" :rules="rules" label="Device Name" v-model="result.Devices[index].DevName"></v-text-field>
+                      <v-text-field outlined counter maxlength="16" :rules="rules" label="Sensor1 Name" v-model="result.Devices[index].Sensor1"></v-text-field>
+                      <v-text-field outlined counter maxlength="16" :rules="rules" label="Sensor2 Name" v-model="result.Devices[index].Sensor2"></v-text-field>
                       <v-text-field autofocus outlined counter maxlength="16" :rules="rules16" label="EUI" v-model="result.Devices[index].DevEUI"></v-text-field>
                       <v-select outlined counter maxlength="32" :rules="rules" label="LoRa Version" :items="Versions" v-model="result.Devices[index].Version"></v-select>
                       <v-text-field
@@ -203,6 +215,8 @@ export default {
     result:null,
     Accounts:[],
     DevName:null,
+    Sensor1:null,
+    Sensor2:null,
     DevEUI:null,
     AppKey:null,
     NwkKey:null,
@@ -355,6 +369,8 @@ export default {
 //      console.log(this.FirstName.toString());
       this.$ajax.post(this.$store.state.server+'/devices',{
         'DevName': this.DevName,
+        'Sensor1': this.Sensor1,
+        'Sensor2': this.Sensor2,
         'DevEUI': this.DevEUI,
         'AppKey': this.AppKey,
         'NwkKey': this.NwkKey,
@@ -364,7 +380,6 @@ export default {
       {
           headers: {
             'Authorization': 'Bearer ' + this.$store.state.jwt_token,
-            'Content-Type': 'application/json; charset=windows-1251'
           }
       })
       .then ()
@@ -383,6 +398,8 @@ export default {
       this.$ajax.post(this.$store.state.server+'/devices',{
         'DevEUI': this.result.Devices[index].DevEUI,
         'DevName': this.result.Devices[index].DevName,
+        'Sensor1': this.result.Devices[index].Sensor1,
+        'Sensor2': this.result.Devices[index].Sensor2,
         'AppKey': this.result.Devices[index].AppKey,
         'NwkKey': this.result.Devices[index].NwkKey,
         'Users': this.result.Devices[index].Users,
@@ -391,7 +408,6 @@ export default {
       {
           headers: {
             'Authorization': 'Bearer ' + this.$store.state.jwt_token,
-            'Content-Type': 'application/json; charset=windows-1251'
           }
       })
       .then ()      .catch(e => {   

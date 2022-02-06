@@ -69,10 +69,6 @@ const static Letter g_letters[] = {
         {0xBF, 0x0457} // CYRILLIC SMALL LETTER YI
 };
 
-#define letters_count sizeof(g_letters)/sizeof(Letter)
-
-
-
 
 char* utf8tow1251(const char* utf)
 {

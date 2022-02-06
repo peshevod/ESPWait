@@ -128,18 +128,18 @@ void messagePrepare( TimerHandle_t xTimer )
 {
     char uname[16];
     char devUser[USERNAME_MAX];
-    char sensor1_message[64],sensor2_message[64];
+    char sensor1_message[96],sensor2_message[96];
     eTaskState e;
     ESP_LOGI(TAG,"---Enter in messagePrepare Free=FREE=%d",xPortGetFreeHeapSize());
     if(data->sensors.sensor1_mode&SENSOR_MODE_ENABLE && data->sensors.sensor1_mode&SENSOR_MODE_TRIGGER && data->sensors.sensor1_evt && data->sensors.sensor1_evt)
 //		if(data->sensors.sensor1_mode&SENSOR_MODE_ENABLE && data->sensors.sensor1_mode&SENSOR_MODE_TRIGGER && ( (data->sensors.sensor1_cur && data->sensors.sensor1_mode&SENSOR_MODE_TRIGGER) || (!data->sensors.sensor1_cur && !(data->sensors.sensor1_mode&SENSOR_MODE_TRIGGER)) ))
 	{
-		sprintf(sensor1_message,"Alarm from Sensor1 of device %s, events=%d",networkSession->endDevice->Name,data->sensors.sensor1_evt);
+		sprintf(sensor1_message,"Alarm from %s of device %s, events=%d",networkSession->endDevice->Sensor1, networkSession->endDevice->Name,data->sensors.sensor1_evt);
 	} else sensor1_message[0]=0;
 	if(data->sensors.sensor2_mode&SENSOR_MODE_ENABLE && data->sensors.sensor2_mode&SENSOR_MODE_TRIGGER && data->sensors.sensor2_evt && data->sensors.sensor2_evt)
 //		if(data->sensors.sensor2_mode&SENSOR_MODE_ENABLE && data->sensors.sensor2_mode&SENSOR_MODE_TRIGGER && ( (data->sensors.sensor2_cur && data->sensors.sensor2_mode&SENSOR_MODE_TRIGGER) || (!data->sensors.sensor2_cur && !(data->sensors.sensor2_mode&SENSOR_MODE_TRIGGER)) ))
 	{
-		sprintf(sensor2_message,"Alarm from Sensor2 of device %s, events=%d",networkSession->endDevice->Name,data->sensors.sensor2_evt);
+		sprintf(sensor2_message,"Alarm from %s of device %s, events=%d",networkSession->endDevice->Sensor2, networkSession->endDevice->Name,data->sensors.sensor2_evt);
 	} else sensor2_message[0]=0;
 	if(sensor1_message[0] || sensor2_message[0])
 	{
@@ -158,10 +158,10 @@ esp_err_t getJsonData(char* user, char* role, void* pvParams,char* out, int max_
 {
 	NetworkSession_t* networkSession=(NetworkSession_t*)pvParams;
 	int l;
-	char str[48];
+	char str[160];
 	uint8_t usernum=get_user_number(user,role);
 	if(usernum!=0 && !in_list(usernum, networkSession->endDevice->users)) return ESP_OK;
-	sprintf(str,"{\"Device\":\"%s\",\"time\":\"%ld\",",networkSession->endDevice->Name,networkSession->currentState.t);
+	sprintf(str,"{\"Device\":\"%s\",\"Sensor1\":\"%s\",\"Sensor2\":\"%s\",\"time\":\"%ld\",",networkSession->endDevice->Name, networkSession->endDevice->Sensor1, networkSession->endDevice->Sensor2, networkSession->currentState.t);
 	l=strlen(str);
 	if(l>=max_length) return ESP_ERR_INVALID_SIZE;
 	strcat(out,str);

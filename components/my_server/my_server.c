@@ -563,8 +563,10 @@ static esp_err_t devices_get_handler(httpd_req_t *req)
 	uint8_t users[MAX_USERS];
     char role[ROLENAME_MAX];
     char join[2048];
-    char parstr[128];
+    char parstr[144];
     char devName[PAR_STR_MAX_SIZE];
+    char sensor1[PAR_STR_MAX_SIZE];
+    char sensor2[PAR_STR_MAX_SIZE];
     uint8_t eui[8];
     uint8_t AppKey[16];
     uint8_t NwkKey[16];
@@ -597,9 +599,13 @@ static esp_err_t devices_get_handler(httpd_req_t *req)
 		if(Read_key_params(uname,NwkKey)!=ESP_OK) for(uint8_t i=0;i<16;i++) NwkKey[i]=0;
 		sprintf(uname,"Dev%dName",j);
 		if(Read_str_params(uname,devName, PAR_STR_MAX_SIZE)!=ESP_OK) devName[0]=0;
+		sprintf(uname,"Dev%ds1",j);
+		if(Read_str_params(uname,sensor1, PAR_STR_MAX_SIZE)!=ESP_OK) sensor1[0]=0;
+		sprintf(uname,"Dev%ds2",j);
+		if(Read_str_params(uname,sensor2, PAR_STR_MAX_SIZE)!=ESP_OK) sensor2[0]=0;
 		sprintf(uname,"Dev%dVersion",j);
 		if(Read_u8_params(uname,&version)!=ESP_OK) version=0;
-		sprintf(parstr,"{\"DevName\":\"%s\",\"DevEUI\":\"",devName);
+		sprintf(parstr,"{\"DevName\":\"%s\",\"Sensor1\":\"%s\",\"Sensor2\":\"%s\",\"DevEUI\":\"",devName,sensor1,sensor2);
 		strcat(join,parstr);
 		l=strlen(join);
 		for(uint8_t i=0;i<8;i++,l+=2) sprintf(&join[l],"%02X",eui[i]);
@@ -1100,6 +1106,28 @@ static esp_err_t devices_post_handler(httpd_req_t *req)
 									free(DevName_w1251);
 								}
 							}
+							par = cJSON_GetObjectItemCaseSensitive(json_content,"Sensor1");
+							if(par!=NULL && cJSON_IsString(par) && par->valuestring!=NULL )
+							{
+								sprintf(uname,"Dev%ds1",j0);
+								char* Sensor1_w1251=utf8tow1251(par->valuestring);
+								if(Sensor1_w1251!=NULL)
+								{
+									Write_str_params(uname,Sensor1_w1251);
+									free(Sensor1_w1251);
+								}
+							}
+							par = cJSON_GetObjectItemCaseSensitive(json_content,"Sensor2");
+							if(par!=NULL && cJSON_IsString(par) && par->valuestring!=NULL )
+							{
+								sprintf(uname,"Dev%ds2",j0);
+								char* Sensor2_w1251=utf8tow1251(par->valuestring);
+								if(Sensor2_w1251!=NULL)
+								{
+									Write_str_params(uname,Sensor2_w1251);
+									free(Sensor2_w1251);
+								}
+							}
 							par = cJSON_GetObjectItemCaseSensitive(json_content,"Version");
 							if(par!=NULL && cJSON_IsString(par) && par->valuestring!=NULL )
 							{
@@ -1271,6 +1299,7 @@ void start_my_server(void)
     config.stack_size=6144;
     config.uri_match_fn=httpd_uri_match_wildcard;
     config.max_uri_handlers=16;
+    config.core_id = 0;
 
     conf.cacert_pem = cacert_pem_start;
     conf.cacert_len = cacert_pem_end - cacert_pem_start;
@@ -1279,6 +1308,7 @@ void start_my_server(void)
     conf.prvtkey_len = prvtkey_pem_end - prvtkey_pem_start;
 
     esp_err_t ret = httpd_ssl_start(&my_server, &conf);
+//    esp_err_t ret = httpd_start(&my_server, &config);
     if (ESP_OK == ret) {
    // Set URI handlers
 		ESP_LOGI(TAG, "Registering URI handlers");
