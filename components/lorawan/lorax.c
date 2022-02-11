@@ -22,6 +22,7 @@
 #include "request.h"
 #include "storage.h"
 #include "dirent.h"
+#include "../../main/main.h"
 
 
 NetworkServer_t networkServer;
@@ -160,7 +161,7 @@ LorawanError_t initNetworkSession(NetworkSession_t* networkSession , EndDevice_t
     else networkSession->dlSettings.bits.version_1dot1=0;
     networkSession->dlSettings.bits.rx1DROffset=0;
     networkSession->dlSettings.bits.rx2DataRate=DR0;
-    networkSession->endDevice->devAddr.value=get_nextDevAddr(&(networkSession->networkServer->lastDevAddr));
+    networkSession->devAddr.value=get_nextDevAddr(&(networkSession->networkServer->lastDevAddr));
     networkSession->cflist_present=0;
     memset(networkSession->cflist,0,16);
     networkSession->FCntUp.value=0;
@@ -325,8 +326,8 @@ uint8_t PrepareJoinAcceptFrame (NetworkSession_t* networkSession, uint8_t *macBu
     memcpy(&macBuffer[bufferIndex],&networkSession->networkServer->netID,JA_NET_ID_SIZE);
     bufferIndex = bufferIndex + JA_NET_ID_SIZE;
 
-    memcpy(&macBuffer[bufferIndex],networkSession->endDevice->devAddr.buffer,sizeof(networkSession->endDevice->devAddr.buffer));
-    bufferIndex = bufferIndex + sizeof(networkSession->endDevice->devAddr.buffer);
+    memcpy(&macBuffer[bufferIndex],networkSession->devAddr.buffer,sizeof(networkSession->devAddr.buffer));
+    bufferIndex = bufferIndex + sizeof(networkSession->devAddr.buffer);
 
     memcpy(&macBuffer[bufferIndex],&(networkSession->dlSettings.value),sizeof(networkSession->dlSettings.value));
     bufferIndex = bufferIndex + sizeof(networkSession->dlSettings.value);
@@ -397,7 +398,7 @@ uint8_t PrepareAckFrame (NetworkSession_t* networkSession, uint8_t *macBuffer)
 
     macBuffer[bufferIndex++] = mhdr.value;  // add the mac header to the buffer
 
-    memcpy(&macBuffer[bufferIndex],&networkSession->endDevice->devAddr.value,sizeof(DeviceAddress_t));
+    memcpy(&macBuffer[bufferIndex],&networkSession->devAddr.value,sizeof(DeviceAddress_t));
     bufferIndex = bufferIndex + sizeof(DeviceAddress_t);
 
     FCtrl_t fctrl;
@@ -413,7 +414,7 @@ uint8_t PrepareAckFrame (NetworkSession_t* networkSession, uint8_t *macBuffer)
     *((uint16_t*)(&macBuffer[bufferIndex]))=fcnt;
     bufferIndex+=2;
 
-    AssembleEncryptionBlock (DIR_DOWNLINK, networkSession->NFCntDown.value, bufferIndex, 0x49, networkSession->endDevice->devAddr,networkSession->endDevice->version==0 ? 0 : networkSession->FCntUp.members.valueLow);
+    AssembleEncryptionBlock (DIR_DOWNLINK, networkSession->NFCntDown.value, bufferIndex, 0x49, networkSession->devAddr,networkSession->endDevice->version==0 ? 0 : networkSession->FCntUp.members.valueLow);
     memcpy (&radioBuffer[0], aesBuffer, sizeof (aesBuffer));
     memcpy (&radioBuffer[16], macBuffer, bufferIndex);
     AESCmac(networkSession->FNwkSIntKey, aesBuffer, &radioBuffer[0], bufferIndex + sizeof (aesBuffer));
@@ -518,7 +519,7 @@ LorawanError_t LORAX_RxDone (uint8_t* buffer, uint8_t bufferLength, int16_t rssi
         for(sessionNumber=0;sessionNumber<number_of_devices;sessionNumber++)
         {
             if(networkSessions[sessionNumber]==NULL) continue;
-        	if (hdr->devAddr.value == networkSessions[sessionNumber]->endDevice->devAddr.value)
+        	if (hdr->devAddr.value == networkSessions[sessionNumber]->devAddr.value)
             {
                 networkSession=networkSessions[sessionNumber];
                 ESP_LOGI(TAG,"Session number %d for devEUI=%016llx",sessionNumber,networkSession->endDevice->devEui.eui);
@@ -564,7 +565,7 @@ LorawanError_t LORAX_RxDone (uint8_t* buffer, uint8_t bufferLength, int16_t rssi
             return FRAME_COUNTER_ERROR_REJOIN_NEEDED;
         }
 
-        AssembleEncryptionBlock (DIR_UPLINK, networkSession->FCntUp.value, bufferLength - sizeof (computedMic), 0x49, networkSession->endDevice->devAddr,0);
+        AssembleEncryptionBlock (DIR_UPLINK, networkSession->FCntUp.value, bufferLength - sizeof (computedMic), 0x49, networkSession->devAddr,0);
         memcpy (&radioBuffer[0], aesBuffer, sizeof (aesBuffer));
         memcpy (&radioBuffer[16], buffer, bufferLength-sizeof(computedMic));
         AESCmac(networkSession->FNwkSIntKey, aesBuffer, &radioBuffer[0], bufferLength - sizeof(computedMic) + sizeof (aesBuffer));
@@ -585,7 +586,7 @@ LorawanError_t LORAX_RxDone (uint8_t* buffer, uint8_t bufferLength, int16_t rssi
         {
         	networkSession->port=buffer[hdr->fCtrl.bits.fOptsLen+8];
         	networkSession->payloadLength=bufferLength-hdr->fCtrl.bits.fOptsLen-9-sizeof(computedMic);
-        	EncryptFRMPayload(&buffer[hdr->fCtrl.bits.fOptsLen+9], networkSession->payloadLength, DIR_UPLINK, networkSession->FCntUp.value, networkSession->port==0 ? networkSession->NwkSEncKey : networkSession->AppSKey, 0, macBuffer, networkSession->endDevice->devAddr);
+        	EncryptFRMPayload(&buffer[hdr->fCtrl.bits.fOptsLen+9], networkSession->payloadLength, DIR_UPLINK, networkSession->FCntUp.value, networkSession->port==0 ? networkSession->NwkSEncKey : networkSession->AppSKey, 0, macBuffer, networkSession->devAddr);
         	if(networkSession->port!=0)
         	{
         		networkSession->payload=macBuffer;
@@ -605,7 +606,7 @@ LorawanError_t LORAX_RxDone (uint8_t* buffer, uint8_t bufferLength, int16_t rssi
         exp=START_TIMER_VALUE - xTimerGetExpiryTime(startTimerId) + xTaskGetTickCount();
         xTimerChangePeriod(networkSession->sendAnswerTimerId->timer,(networkSession->protocolParameters.receiveDelay1-20)/portTICK_PERIOD_MS-exp, 0);
         xTimerStart(networkSession->sendAnswerTimerId->timer, 0);
-
+        if(hdr->fCnt == 3) saveSessions();
     }
     return LORA_OK;
 }

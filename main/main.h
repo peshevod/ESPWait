@@ -77,5 +77,8 @@ static void s2lp_rec_start2(void *arg);
 static void s2lp_trans_start(void);
 void init_bt_gattc(void);
 void init_bt_gatts(void);
+void saveSessions(void);
+
+
 
 #endif /* MAIN_MAIN_H_ */

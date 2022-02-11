@@ -23,6 +23,7 @@ uint8_t number_of_devices;
 
 extern NetworkSession_t* networkSessions[MAX_NUMBER_OF_DEVICES];
 extern GenericEui_t joinEui;
+extern NetworkServer_t networkServer;
 static char TAG[]={"device.c"};
 
 uint8_t euicmpnz(GenericEui_t* eui)
@@ -146,8 +147,8 @@ void fill_devices1(void)
 				dev=(EndDevice_t*)malloc(sizeof(EndDevice_t));
 				endDevices[i]=dev;
 			}
-			if(euicmp(&dev->devEui,&eui))
-			{
+//			if(euicmp(&dev->devEui,&eui))
+//			{
 				sprintf(uname,"Dev%dEui",i+1);
 				Read_eui_params(uname,dev->devEui.buffer);
 				sprintf(uname,"Dev%dAppKey",i+1);
@@ -164,10 +165,10 @@ void fill_devices1(void)
 				Read_str_params(uname,dev->Sensor2,PAR_STR_MAX_SIZE);
 				sprintf(uname,"Dev%dUsers",i+1);
 				Read_eui_params(uname,dev->users);
-				dev->devNonce=0;
-				put_DevNonce(i,0);
-			}
-			else dev->devNonce=get_DevNonce(i);
+//				dev->devNonce=0;
+//				put_DevNonce(i,0);
+//			}
+//			else dev->devNonce=get_DevNonce(i);
 		}
 	}
 	ESP_LOGI(TAG,"Number of registered devices=%d",number_of_devices);

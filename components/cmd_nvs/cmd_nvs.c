@@ -58,6 +58,7 @@ const _par_t _pars[]={
 	{PAR_UI8,"JP5",{ 0x02 }, "JP5 mode, 0-inactive, 1 - change status, 2 - if alarm - non-stop, 0x04 bit: if set JP5 1 - norm, 0 - alarm",VISIBLE },
 	{PAR_UI8,"SPI_Trace",{ 0 }, "Tracing SPI 0:OFF 1:ON",VISIBLE },
 	{PAR_UI8,"JSNumber",{ 1 }, "Select Join Server - 1, 2 or 3",VISIBLE },
+	{PAR_UI8,"LoraRestore",{ 0 }, "0- initial, 1- restore sessions",VISIBLE },
 	{PAR_UI32,"NetID",{ 0x00000000 }, "Network Id",VISIBLE },
 	{PAR_I32,"RX1_offset",{ -40 }, "Offset(ms) to send ack",VISIBLE },
 	{PAR_EUI64,"DevEui",{.eui={0,0,0,0,0,0,0,0}}, "DevEui 64",VISIBLE },

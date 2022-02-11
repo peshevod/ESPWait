@@ -557,23 +557,22 @@ typedef void (*RxJoinResponseCb_t)(bool status);
 typedef struct
 {
 	GenericEui_t devEui;
+	uint16_t devNonce;
 	uint8_t AppKey[16];
 	uint8_t NwkKey[16];
-	uint16_t devNonce;
 //	uint8_t number_in_flash;
 	uint8_t version;
 	char Name[PAR_STR_MAX_SIZE];
 	char Sensor1[PAR_STR_MAX_SIZE];
 	char Sensor2[PAR_STR_MAX_SIZE];
 	uint8_t users[MAX_USERS];
-	DeviceAddress_t devAddr;
 } EndDevice_t;
 
 typedef struct
 {
 	uint32_t netID;
 	DeviceAddress_t lastDevAddr;
-	ActivationParameters_t defaultActivationParameters;
+//	ActivationParameters_t defaultActivationParameters;
 } NetworkServer_t;
 
 //typedef struct
@@ -594,6 +593,7 @@ typedef struct
 	GenericEui_t joinEui;
 	NetworkServer_t* networkServer;
 	uint32_t joinNonce;
+	DeviceAddress_t devAddr;
 	uint8_t FNwkSIntKey[16];
 	uint8_t SNwkSIntKey[16];
 	uint8_t AppSKey[16];

@@ -26,6 +26,7 @@ void LORAX_TRANSMIT(void);
 void LORAX_Reset (IsmBand_t ismBandNew);
 void LORAX_SEND_START(void);
 void LORAX_TxDone (uint16_t timeOnAir);
+void LORAX_SendAnswerCallback ( TimerHandle_t xExpiredTimer );
 
 #ifdef	__cplusplus
 }

@@ -60,6 +60,8 @@
 #include "message.h"
 #define LOG_LOCAL_LEVEL ESP_LOG_VERBOSE
 #include "esp_log.h"
+#include "sdmmc_cmd.h"
+#include "lorax.h"
 //#include "spi_intf.h"
 
 //#include "bt/host/bluedroid/api/include/api/esp_bt_main.h"
@@ -88,6 +90,10 @@ static volatile uint8_t ready_to_send=0;
 static volatile uint8_t wifi_stopped;
 static uint8_t only_timer_wakeup=0;
 Profile_t JoinServer;
+extern NetworkServer_t networkServer;
+extern EndDevice_t* endDevices[MAX_NUMBER_OF_DEVICES];
+extern NetworkSession_t *networkSessions[MAX_NUMBER_OF_DEVICES];
+extern sdmmc_card_t* card;
 
 extern const uint8_t aws_root_ca_pem_start[] asm("_binary_aws_root_ca_pem_start");
 extern const uint8_t aws_root_ca_pem_end[] asm("_binary_aws_root_ca_pem_end");
@@ -771,6 +777,125 @@ static esp_err_t set_global_sec()
 	return ESP_OK;
 }
 
+void saveSessions(void)
+{
+	char filename[]=MOUNT_POINT"/Saved/sessions.dmp";
+	ESP_LOGI("SaveSessions", "Opening  file %s for writing",filename);
+	FILE* f = fopen(filename, "wb");
+	if (f == NULL) {
+		ESP_LOGE("SaveSessions", "Failed to open file %s for writing",filename);
+		return;
+	}
+	uint8_t i;
+	for(i=0;i<MAX_NUMBER_OF_DEVICES;i++)
+	{
+		if(networkSessions[i]!=NULL)
+		{
+			fwrite(&i,1,1,f);
+			fwrite(networkSessions[i],sizeof(NetworkSession_t),1,f);
+			ESP_LOGI("SaveSessions", "Session %d saved to file %s",i,filename);
+		}
+	}
+	i=0xff;
+	fwrite(&i,1,1,f);
+	fclose(f);
+	ESP_LOGI("SaveSessions", "file %s closed",filename);
+	uint8_t restore=1;
+	Write_u8_params("LoraRestore", restore);
+	Commit_params();
+	esp_restart();
+}
+
+static int restoreSessions(void)
+{
+	char filename[]=MOUNT_POINT"/Saved/sessions.dmp";
+	ESP_LOGI("RestoreSessions", "Opening  file %s for reading",filename);
+	FILE* f = fopen(filename, "rb");
+	if (f == NULL) {
+		ESP_LOGE("RestoreSessions", "Failed to open file %s for reading",filename);
+		return -1;
+	}
+	uint8_t i;
+	int k;
+	while(1)
+	{
+		if((k=fread(&i,1,1,f))<1) break;
+		if(i==0xff) break;
+		networkSessions[i]=malloc(sizeof(NetworkSession_t));
+		if((k=fread(networkSessions[i],sizeof(NetworkSession_t),1,f))<1)
+		{
+			ESP_LOGE("RestoreSessions","Read session %d error",i);
+			for(uint8_t j=0;j<=i;j++) if(networkSessions[i]!=NULL) free(networkSessions[i]);
+			return -1;
+		}
+	    ESP_LOGE("RestoreSessions","Read session %d success",i);
+	}
+	fclose(f);
+	ESP_LOGI("RestoreSessions", "file %s closed",filename);
+	return 0;
+}
+
+static void loraInit(void)
+{
+	uint8_t restore;
+	set_s("NETID",&networkServer.netID);
+	for(uint8_t i=0;i<MAX_NUMBER_OF_DEVICES;i++)
+	{
+		networkSessions[i]=NULL;
+		endDevices[i]=NULL;
+	}
+    fill_devices1();
+	set_s("LORARESTORE",&restore);
+	if(restore)
+	{
+		restore=0;
+		Write_u8_params("LoraRestore", restore);
+		Commit_params();
+		networkServer.lastDevAddr.value=0;
+		if(restoreSessions())
+		{
+			for(uint8_t i=0;i<MAX_NUMBER_OF_DEVICES;i++)
+			{
+				if(networkSessions[i]!=NULL) free(networkSessions[i]);
+				networkSessions[i]=NULL;
+			}
+		}
+		else
+		{
+			for(uint8_t i=0;i<MAX_NUMBER_OF_DEVICES;i++)
+			{
+				if(networkSessions[i]!=NULL)
+				{
+					networkSessions[i]->endDevice=endDevices[i];
+					networkSessions[i]->sessionNumber=i;
+					networkSessions[i]->networkServer=&networkServer;
+					networkSessions[i]->sendAnswerTimerId=malloc(sizeof(SessionTimer_t));
+					networkSessions[i]->sendAnswerTimerId->event=0xFF;
+					networkSessions[i]->sendAnswerTimerId->networkSession=(void*)networkSessions[i];
+					networkSessions[i]->sendAnswerTimerId->timer=xTimerCreate("sendAnswerTimerId",86400000,pdFALSE,networkSessions[i]->sendAnswerTimerId, LORAX_SendAnswerCallback);
+					networkSessions[i]->app=NULL;
+					networkSessions[i]->payload=NULL;
+					networkSessions[i]->payloadLength=0;
+					networkSessions[i]->port=0;
+					networkSessions[i]->flags.value=0;
+					endDevices[i]->devNonce=get_DevNonce(i);
+				}
+			}
+		}
+	}
+	else
+	{
+		for(uint8_t i=0;i<MAX_NUMBER_OF_DEVICES;i++)
+		{
+			if(endDevices[i]!=NULL)
+			{
+				endDevices[i]->devNonce=0;
+				put_DevNonce(i,0);
+			}
+		}
+	}
+}
+
 static void system_init()
 {
 	esp_err_t err;
@@ -792,7 +917,6 @@ static void system_init()
     Sync_EEPROM();
     //    uint8_t x=selectJoinServer((void*)&JoinServer);
     ESP_LOGI(TAG,"After Sync EEPROM FREE=%d",xPortGetFreeHeapSize());
-    fill_devices1();
     ESP_LOGI(TAG,"After fill devices FREE=%d",xPortGetFreeHeapSize());
 //    getAuthToken();
 //    print_SHAKey(shaKey);
@@ -804,6 +928,7 @@ static void system_init()
     ESP_LOGI(TAG,"After init sdmmc FREE=%d",xPortGetFreeHeapSize());
     test_sdmmc();
    	test_spi();
+   	loraInit();
    	ready_to_send=0;
 	wifi_stopped=1;
 	if((err=wifi_prepare())!=ESP_OK)
