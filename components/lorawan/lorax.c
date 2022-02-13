@@ -176,6 +176,7 @@ LorawanError_t initNetworkSession(NetworkSession_t* networkSession , EndDevice_t
     networkSession->sendAnswerTimerId->networkSession=(void*)networkSession;
     networkSession->sendAnswerTimerId->timer=xTimerCreate("sendAnswerTimerId",86400000,pdFALSE,networkSession->sendAnswerTimerId, LORAX_SendAnswerCallback);
 
+    networkSession->sendMessageTimer=xTimerCreate("messageTimer", 2000 / portTICK_PERIOD_MS, pdFALSE, (void*)networkSession, messagePrepare);
 
     struct stat buf = {0};
     bool dir_exists=false;
@@ -204,6 +205,16 @@ LorawanError_t initNetworkSession(NetworkSession_t* networkSession , EndDevice_t
 
 
     return LORA_OK;
+}
+
+void freeNetworkSession(NetworkSession_t** networkSession)
+{
+	if(networkSession==NULL || *networkSession==NULL) return;
+	xTimerDelete((*networkSession)->sendAnswerTimerId->timer,0);
+	free((*networkSession)->sendAnswerTimerId);
+	xTimerDelete((*networkSession)->sendMessageTimer,0);
+	free(*networkSession);
+	*networkSession=NULL;
 }
 
 void LORAX_SendAnswerCallback ( TimerHandle_t xExpiredTimer )
@@ -488,8 +499,7 @@ LorawanError_t LORAX_RxDone (uint8_t* buffer, uint8_t bufferLength, int16_t rssi
         }
         if(networkSessions[sessionNumber]!=NULL)
         {
-        	free(networkSessions[sessionNumber]);
-        	networkSessions[sessionNumber]=NULL;
+        	freeNetworkSession(&networkSessions[sessionNumber]);
         }
         networkSessions[sessionNumber]=malloc(sizeof(NetworkSession_t));
         memset(networkSessions[sessionNumber],0,sizeof(NetworkSession_t));
@@ -606,7 +616,6 @@ LorawanError_t LORAX_RxDone (uint8_t* buffer, uint8_t bufferLength, int16_t rssi
         exp=START_TIMER_VALUE - xTimerGetExpiryTime(startTimerId) + xTaskGetTickCount();
         xTimerChangePeriod(networkSession->sendAnswerTimerId->timer,(networkSession->protocolParameters.receiveDelay1-20)/portTICK_PERIOD_MS-exp, 0);
         xTimerStart(networkSession->sendAnswerTimerId->timer, 0);
-        if(hdr->fCnt == 3) saveSessions();
     }
     return LORA_OK;
 }

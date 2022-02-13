@@ -611,6 +611,7 @@ typedef struct
 	FCnt_t AFCntDown;
 	LoRaMacState_t macState;
 	SessionTimer_t* sendAnswerTimerId;
+	TimerHandle_t sendMessageTimer;
 	ProtocolParams_t protocolParameters;
 	uint8_t macBuffer[MAXIMUM_BUFFER_LENGTH];
 	uint8_t bufferIndex;

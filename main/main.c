@@ -62,6 +62,7 @@
 #include "esp_log.h"
 #include "sdmmc_cmd.h"
 #include "lorax.h"
+#include "storage.h"
 //#include "spi_intf.h"
 
 //#include "bt/host/bluedroid/api/include/api/esp_bt_main.h"
@@ -83,7 +84,7 @@ char mes1[MAX_MESSAGE_SIZE];
 char mes2[MAX_MESSAGE_SIZE];
 uint8_t con,mqtt_con,aws_con;
 tcpip_adapter_if_t ifindex;
-static input_data_t data;
+static input_data_t input_data;
 static DRAM_ATTR xQueueHandle s2lp_evt_queue = NULL;
 static wifi_config_t sta_config;
 static volatile uint8_t ready_to_send=0;
@@ -94,6 +95,7 @@ extern NetworkServer_t networkServer;
 extern EndDevice_t* endDevices[MAX_NUMBER_OF_DEVICES];
 extern NetworkSession_t *networkSessions[MAX_NUMBER_OF_DEVICES];
 extern sdmmc_card_t* card;
+extern SemaphoreHandle_t xSemaphore_Message;
 
 extern const uint8_t aws_root_ca_pem_start[] asm("_binary_aws_root_ca_pem_start");
 extern const uint8_t aws_root_ca_pem_end[] asm("_binary_aws_root_ca_pem_end");
@@ -597,20 +599,20 @@ static void s2lp_wait()
 //    s2lp_getdata();
    	ESP_LOGI("s2lp_wait","got data from s2lp");
     xTaskCreatePinnedToCore(s2lp_rec_start2, "s2lp_rec_start2", 8192, NULL, 10, NULL,0);
-	while(xQueueReceive(s2lp_evt_queue,&data,16000/portTICK_PERIOD_MS))
+	while(xQueueReceive(s2lp_evt_queue,&input_data,16000/portTICK_PERIOD_MS))
 	{
-        ESP_LOGI("s2lp_getdata","REC: Power: %d dbm 0x%08X 0x%08X 0x%08X\n",data.input_signal_power,data.seq_number,data.serial_number,data.data[0]);
-		i0=test_update_table(data.serial_number,data.seq_number);
+        ESP_LOGI("s2lp_getdata","REC: Power: %d dbm 0x%08X 0x%08X 0x%08X\n",input_data.input_signal_power,input_data.seq_number,input_data.serial_number,input_data.data[0]);
+		i0=test_update_table(input_data.serial_number,input_data.seq_number);
 		if(i0!=-1)
 		{
 			if(wifi_prepare()==ESP_OK)
 			{
 //				send_to_cloud();
-				update_table(data.serial_number,data.seq_number,i0);
+				update_table(input_data.serial_number,input_data.seq_number,i0);
 			}
 			else ESP_LOGE("s2lp_wait","Failed to send - no connection");
 		}
-		else ESP_LOGI(TAG,"DO NOT SEND: Power: %d dbm 0x%08X 0x%08X 0x%08X\n",data.input_signal_power,data.seq_number,data.serial_number,data.data[0]);
+		else ESP_LOGI(TAG,"DO NOT SEND: Power: %d dbm 0x%08X 0x%08X 0x%08X\n",input_data.input_signal_power,input_data.seq_number,input_data.serial_number,input_data.data[0]);
 	}
 	if(mqtt_con)
 	{
@@ -798,6 +800,7 @@ void saveSessions(void)
 	}
 	i=0xff;
 	fwrite(&i,1,1,f);
+	fwrite(&networkServer.lastDevAddr.value,4,1,f);
 	fclose(f);
 	ESP_LOGI("SaveSessions", "file %s closed",filename);
 	uint8_t restore=1;
@@ -828,8 +831,9 @@ static int restoreSessions(void)
 			for(uint8_t j=0;j<=i;j++) if(networkSessions[i]!=NULL) free(networkSessions[i]);
 			return -1;
 		}
-	    ESP_LOGE("RestoreSessions","Read session %d success",i);
+	    ESP_LOGE("RestoreSessionsnetworkSessions[i]","Read session %d success",i);
 	}
+	fread(&networkServer.lastDevAddr.value,4,1,f);
 	fclose(f);
 	ESP_LOGI("RestoreSessions", "file %s closed",filename);
 	return 0;
@@ -851,7 +855,7 @@ static void loraInit(void)
 		restore=0;
 		Write_u8_params("LoraRestore", restore);
 		Commit_params();
-		networkServer.lastDevAddr.value=0;
+//		networkServer.lastDevAddr.value=0;
 		if(restoreSessions())
 		{
 			for(uint8_t i=0;i<MAX_NUMBER_OF_DEVICES;i++)
@@ -866,18 +870,20 @@ static void loraInit(void)
 			{
 				if(networkSessions[i]!=NULL)
 				{
-					networkSessions[i]->endDevice=endDevices[i];
-					networkSessions[i]->sessionNumber=i;
-					networkSessions[i]->networkServer=&networkServer;
-					networkSessions[i]->sendAnswerTimerId=malloc(sizeof(SessionTimer_t));
-					networkSessions[i]->sendAnswerTimerId->event=0xFF;
-					networkSessions[i]->sendAnswerTimerId->networkSession=(void*)networkSessions[i];
-					networkSessions[i]->sendAnswerTimerId->timer=xTimerCreate("sendAnswerTimerId",86400000,pdFALSE,networkSessions[i]->sendAnswerTimerId, LORAX_SendAnswerCallback);
-					networkSessions[i]->app=NULL;
-					networkSessions[i]->payload=NULL;
-					networkSessions[i]->payloadLength=0;
-					networkSessions[i]->port=0;
-					networkSessions[i]->flags.value=0;
+					NetworkSession_t* networkSession=networkSessions[i];
+					networkSession->endDevice=endDevices[i];
+					networkSession->sessionNumber=i;
+					networkSession->networkServer=&networkServer;
+					networkSession->sendAnswerTimerId=malloc(sizeof(SessionTimer_t));
+					networkSession->sendAnswerTimerId->event=0xFF;
+					networkSession->sendAnswerTimerId->networkSession=(void*)networkSession;
+					networkSession->sendAnswerTimerId->timer=xTimerCreate("sendAnswerTimerId",86400000,pdFALSE,networkSession->sendAnswerTimerId, LORAX_SendAnswerCallback);
+					networkSession->sendMessageTimer=xTimerCreate("messageTimer", 2000 / portTICK_PERIOD_MS, pdFALSE, (void*)networkSession, messagePrepare);
+					networkSession->payload=NULL;
+					networkSession->payloadLength=0;
+					networkSession->app=NULL;
+					networkSession->port=0;
+					networkSession->flags.value=0;
 					endDevices[i]->devNonce=get_DevNonce(i);
 				}
 			}
@@ -949,6 +955,13 @@ static void system_init()
     ESP_LOGI(TAG,"After get SHAKey FREE=%d",xPortGetFreeHeapSize());
     accessInit();
     ESP_LOGI(TAG,"After accessInit FREE=%d",xPortGetFreeHeapSize());
+	if(esp_reset_reason()==ESP_RST_SW)
+	{
+		for(uint8_t i=0;i<MAX_NUMBER_OF_DEVICES;i++)
+		{
+			if(networkSessions[i]!=NULL) messagePrepare(networkSessions[i]->sendMessageTimer);
+		}
+	}
     start_my_server();
     ESP_LOGI(TAG,"after start server FREE=%d",xPortGetFreeHeapSize());
 //    EraseKey("ilya_token");
@@ -1040,7 +1053,7 @@ void app_main(void)
 //			HALDioInterruptInit();
 
     }
-	start_s2lp_console();
+	if(esp_reset_reason()!=ESP_RST_SW) start_s2lp_console();
 	xTaskCreatePinnedToCore(startSX1276Task,"SX1276Task",16384,NULL,tskIDLE_PRIORITY+2,&SX1276_Handle,1);
 //	ESP_LOGI("app_main","Going to sleep... %lld us",sleep_time);
 //	to_sleep(sleep_time);

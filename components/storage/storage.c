@@ -13,21 +13,18 @@
 #include "crypto.h"
 #include "users.h"
 #include "cmd_nvs.h"
-#include "message.h"
+#include "../../main/main.h"
 
 static const char *TAG = "storage";
 sdmmc_card_t* card;
 static DIR* rootDir;
-TimerHandle_t sendMessageTimer;
+//TimerHandle_t sendMessageTimer;
 TaskHandle_t messageTaskHandle=NULL;
-NetworkSession_t* networkSession;
-Data_t* data;
 extern uint8_t smt_running;
 extern TaskHandle_t messageTask;
 messageParams_t messageParams;
 
 
-void messagePrepare( TimerHandle_t xTimer );
 
 bool init_sdmmc(void)
 {
@@ -75,13 +72,14 @@ bool init_sdmmc(void)
     // Card has been initialized, print its properties
     sdmmc_card_print_info(stdout, card);
     rootDir=opendir(MOUNT_POINT);
-    sendMessageTimer=xTimerCreate("messageTimer", 2000 / portTICK_PERIOD_MS, pdFALSE, (void*) MESSAGE_TIMER, messagePrepare);
+//    sendMessageTimer=xTimerCreate("messageTimer", 2000 / portTICK_PERIOD_MS, pdFALSE, (void*) MESSAGE_TIMER, messagePrepare);
     return true;
 }
 
 void writeData(void* pvParams)
 {
-	networkSession=(NetworkSession_t*)pvParams;
+	Data_t* data;
+	NetworkSession_t* networkSession=(NetworkSession_t*)pvParams;
 	char filename[64];
 
 	for(uint8_t i=0;i<networkSession->payloadLength;i++) printf("0x%02X ",(networkSession->payload)[i]);
@@ -118,7 +116,7 @@ void writeData(void* pvParams)
 	else ESP_LOGE(TAG, "Failed to open file %s for writing",filename);
 	if(f!=NULL) fclose(f);
 
-	xTimerReset(sendMessageTimer, 0);
+	xTimerReset(networkSession->sendMessageTimer, 0);
 
 	vTaskDelete(NULL);
 }
@@ -126,11 +124,19 @@ void writeData(void* pvParams)
 
 void messagePrepare( TimerHandle_t xTimer )
 {
+	DiskRecord_t* data;
     char uname[16];
     char devUser[USERNAME_MAX];
     char sensor1_message[96],sensor2_message[96];
     eTaskState e;
-    ESP_LOGI(TAG,"---Enter in messagePrepare Free=FREE=%d",xPortGetFreeHeapSize());
+    NetworkSession_t* networkSession=(NetworkSession_t*)pvTimerGetTimerID(xTimer);
+    data=(DiskRecord_t*)&networkSession->currentState;
+    size_t xtotal=heap_caps_get_total_size(MALLOC_CAP_8BIT);
+    size_t xfree=heap_caps_get_free_size(MALLOC_CAP_8BIT);
+    size_t xlargest=heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
+    size_t xminimum=heap_caps_get_minimum_free_size(MALLOC_CAP_8BIT);
+    ESP_LOGI(TAG,"---Enter in messagePrepare Total=%d Free=%d Largest=%d Minimum=%d",xtotal,xfree,xlargest,xminimum);
+    if(xfree<MINIMUM_FREE_HEAP) saveSessions();
     if(data->sensors.sensor1_mode&SENSOR_MODE_ENABLE && data->sensors.sensor1_mode&SENSOR_MODE_TRIGGER && data->sensors.sensor1_evt && data->sensors.sensor1_evt)
 //		if(data->sensors.sensor1_mode&SENSOR_MODE_ENABLE && data->sensors.sensor1_mode&SENSOR_MODE_TRIGGER && ( (data->sensors.sensor1_cur && data->sensors.sensor1_mode&SENSOR_MODE_TRIGGER) || (!data->sensors.sensor1_cur && !(data->sensors.sensor1_mode&SENSOR_MODE_TRIGGER)) ))
 	{
@@ -143,6 +149,7 @@ void messagePrepare( TimerHandle_t xTimer )
 	} else sensor2_message[0]=0;
 	if(sensor1_message[0] || sensor2_message[0])
 	{
+	    if(xfree<MIN_FOR_MES_FREE_HEAP) saveSessions();
 		memcpy(messageParams.users,networkSession->endDevice->users,8);
 		messageParams.retries=3;
 		strcpy(messageParams.messageTitle,"SecureHome Alarm!");

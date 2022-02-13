@@ -7,6 +7,8 @@ extern "C" {
 
 #include <time.h>
 #include "esp_err.h"
+#include "freertos.h"
+#include "freertos/timers.h"
 
 
 #define MOUNT_POINT "/sdcard"
@@ -14,7 +16,8 @@ extern "C" {
 #define SENSOR_MODE_TRIGGER	0x02
 #define SENSOR_MODE_INV		0x04
 
-
+#define MINIMUM_FREE_HEAP 68000
+#define MIN_FOR_MES_FREE_HEAP 80000
 
 #pragma pack(push,1)
 typedef union
@@ -68,6 +71,7 @@ bool init_sdmmc(void);
 void writeData(void* pvParams);
 esp_err_t getJsonData(char* user, char* role, void* pvParams,char* out, int max_length);
 TaskHandle_t sendMessage(char* user0, char* messageTitle0, char* messageBody0, char* messageBody1);
+void messagePrepare( TimerHandle_t xTimer );
 
 #ifdef __cplusplus
 }

@@ -27,3 +27,5 @@ After #if defined(WOLFSSL_ESPIDF) comment out #define NO_WOLFSSL_DIR
     	list(APPEND srcs
        		"c:/Users/ilya/Eclipse/eclipse-workspace/ESPWait/components/my_server/esp_tls_wolfssl.c")
 	endif()
+10. Component my_server: correct CMakeLists.txt for true esp-idf version in
+                    INCLUDE_DIRS "." "C:/Users/ilya/Espressif/esp-idf-v4.4/components/esp_http_server/src" "C:/Users/ilya/Espressif/esp-idf-v4.4/components/esp_http_server/src/port/esp32"
