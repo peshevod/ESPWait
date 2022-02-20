@@ -53,7 +53,6 @@ int myver(int preverify, WOLFSSL_X509_STORE_CTX* store)
 int getCTX(void)
 {
 	int ret;
-
 //	wolfSSL_Debugging_ON();
 
 	if(my_ctx!=NULL) return 0;

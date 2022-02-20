@@ -664,7 +664,7 @@ void LORAX_RxTimeout(void)
 
 uint32_t uid;
 
-
+int32_t delta_freq=-30000;
 
 void LORAX_TRANSMIT(void)
 {
@@ -674,7 +674,7 @@ void LORAX_TRANSMIT(void)
     ((uint32_t*)(&data.temperature))[1]=0;
     set_s("UID",&uid);
     ((uint32_t*)(&data.temperature))[0]=uid;
-
+    delta_freq=-30000;
 }
 
 void LORAX_SEND_START(void)
@@ -682,7 +682,9 @@ void LORAX_SEND_START(void)
 	ESP_LOGI(TAG,"Transmit start");
     uint8_t channel;
 	set_s("CHANNEL",&channel);
-	ConfigureRadio(loRa.currentDataRate, Channels[channel].frequency, DIR_UPLINK);
+	ConfigureRadio(loRa.currentDataRate, Channels[channel].frequency+delta_freq, DIR_UPLINK);
+	delta_freq+=1000;
+	if(delta_freq>30000) delta_freq=-30000;
 	ESP_LOGI(TAG,"Radio configured for TX");
     ((uint32_t*)(&data.temperature))[1]++;
 	RADIO_Transmit(&data, sizeof(data));
@@ -774,7 +776,7 @@ void LORAX_Reset (IsmBand_t ismBandNew)
     loRa.txPower = p;
 
 //    loRa.currentDataRate =DR0;
-    uint32_t bw;
+    uint8_t bw;
     uint8_t sf;
     set_s("SF",&sf);
     set_s("BW",&bw);

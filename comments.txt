@@ -11,6 +11,10 @@
 #define WOLFSSL_TLS13
 #define WOLFSSL_EITHER_SIDE
 
+if using SPIRAM uncomment:
+#define NO_WOLFSSL_ESP32WROOM32_CRYPT_AES
+#define NO_WOLFSSL_ESP32WROOM32_CRYPT_RSA_PRI
+
 4. File d:\Espressif\esp-wolfssl\wolfssl\wolfssl\wolfcrypt\settings.h
 After #if defined(WOLFSSL_ESPIDF) comment out #define NO_WOLFSSL_DIR
 
@@ -29,3 +33,8 @@ After #if defined(WOLFSSL_ESPIDF) comment out #define NO_WOLFSSL_DIR
 	endif()
 10. Component my_server: correct CMakeLists.txt for true esp-idf version in
                     INCLUDE_DIRS "." "C:/Users/ilya/Espressif/esp-idf-v4.4/components/esp_http_server/src" "C:/Users/ilya/Espressif/esp-idf-v4.4/components/esp_http_server/src/port/esp32"
+11. if installing on fresh chip:
+	- component nvs_partition file CMakeLists.txt:
+		for first write flash uncomment #esptool_py_flash_target_image(flash sx1276_params "0x3F0000" "${CMAKE_CURRENT_SOURCE_DIR}/sx1276_params.bin")
+        - execute
+		espefuse.py -p <port> set_flash_voltage 3.3V

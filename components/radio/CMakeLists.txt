@@ -9,4 +9,4 @@
 #register_component()
 idf_component_register(SRCS sx1276_hal.c sx1276_radio_driver.c
                     INCLUDE_DIRS "."
-                    REQUIRES cmd_nvs)
+                    REQUIRES cmd_nvs s2lp_console)

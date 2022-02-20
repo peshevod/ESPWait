@@ -6,6 +6,7 @@
 #include "driver/gpio.h"
 #include "esp_event.h"
 #include "MainLoop.h"
+#include "shell.h"
 
 static void spi_pre_transfer_callback(spi_transaction_t *t);
 static void spi_post_transfer_callback(spi_transaction_t *t);
@@ -28,7 +29,11 @@ static spi_bus_config_t buscfg={
     .quadwp_io_num=-1,
     .quadhd_io_num=-1,
     .max_transfer_sz=256,
+#ifdef ESPWAIT6
+	.flags=SPICOMMON_BUSFLAG_MASTER
+#else
 	.flags=SPICOMMON_BUSFLAG_MASTER|SPICOMMON_BUSFLAG_IOMUX_PINS
+#endif
 };
 
 static spi_device_interface_config_t devcfg={
@@ -38,7 +43,7 @@ static spi_device_interface_config_t devcfg={
     .mode=0,	//CPOL=0,CPHA=0
 	.duty_cycle_pos=0,
 	.cs_ena_posttrans=0,
-    .clock_speed_hz=8*1000*1000,           //Clock out at 10 MHz
+    .clock_speed_hz=2*1000*1000,           //Clock out at 10 MHz
 	.input_delay_ns=0,
 //    .spics_io_num=PIN_NUM_SX1276_CSN,               //CS pin
     .spics_io_num=-1,               //CS pin
@@ -74,6 +79,7 @@ esp_err_t HALSpiInit()
     	ESP_LOGE(TAG,"Error initializing device on MY_SPI_HOST %d err=%s",MY_SPI_HOST,esp_err_to_name(err));
     	return err;
     }
+    set_s("SPI_TRACE",&trace);
     return ESP_OK;
 }
 
@@ -148,7 +154,7 @@ void RADIO_RegisterWrite(uint8_t reg, uint8_t value)
  	ret=spi_device_polling_transmit(spi, &t);
 	HALSPICSDeassert();
 	ESP_ERROR_CHECK(ret);
-    if(trace) ESP_LOGI(TAG,"Write 0x%02x->0x%02x\n",t.tx_data[1],t.tx_data[0]);
+    if(trace) ESP_LOGI(TAG,"Write 0x%02x->0x%02x\n",t.tx_data[1],t.tx_data[0]&0x7F);
 }
 
 uint8_t RADIO_RegisterRead(uint8_t reg)

@@ -69,6 +69,7 @@ static void RADIO_WriteMode(RadioMode_t newMode, RadioModulation_t newModulation
     uint8_t dioMapping;
     RadioModulation_t currentModulation;
     RadioMode_t currentMode;
+//    ESP_LOGI(TAG,"Enter in RADIO_WriteMode newModulation=%s, newMode=%d",MODULATION_FSK == newModulation ? "MODULATION_FSK":"MODULATION_LORA",newMode);
 
     if ((MODULATION_FSK == newModulation) &&
         ((MODE_RXSINGLE == newMode) || (MODE_CAD == newMode)))
@@ -162,6 +163,7 @@ static void RADIO_WriteMode(RadioMode_t newMode, RadioModulation_t newModulation
             }
         }
 		esp_event_post_to(mainLoop, LORA_EVENTS, LORA_CHANGE_MAC_STATE_EVENT, &newMode, sizeof(newMode), 0);
+//		ESP_LOGI(TAG,"Exit from RADIO_WriteMode");
     }
 }
 
@@ -182,6 +184,7 @@ static void RADIO_WriteFrequency(uint32_t frequency)
 {
     uint32_t num, num_mod;
 
+//    ESP_LOGI(TAG,"Enter in RADIO_WriteFrequency freq=%d",frequency);
     // Frf = (Fxosc * num) / 2^19
     // We take advantage of the fact that 32MHz = 15625Hz * 2^11
     // This simplifies our formula to Frf = (15625Hz * num) / 2^8
@@ -206,6 +209,7 @@ static void RADIO_WriteFrequency(uint32_t frequency)
     RADIO_RegisterWrite(REG_FRFMSB, (num >> SHIFT16) & 0xFF);
     RADIO_RegisterWrite(REG_FRFMID, (num >> SHIFT8) & 0xFF);
     RADIO_RegisterWrite(REG_FRFLSB, num & 0xFF);
+//    ESP_LOGI(TAG,"Exit from RADIO_WriteFrequency");
 }
 
 // The math in this function needs adjusting for FXOSC != 32MHz
@@ -342,6 +346,7 @@ void RADIO_Init(uint8_t *radioBuffer, uint32_t frequency)
 {
     uint8_t tmp8;
     uint32_t tmp32;
+//    ESP_LOGI(TAG,"Enter in RADIO_Init cal.freq=%d",frequency);
     RadioConfiguration.frequency = frequency;
     ESP_LOGI(TAG,"Calibration F=%d\n",RadioConfiguration.frequency);
     set_s("DEVIATION",&RadioConfiguration.frequencyDeviation); // = 25000;
@@ -350,6 +355,7 @@ void RADIO_Init(uint8_t *radioBuffer, uint32_t frequency)
     if(tmp8) RadioConfiguration.modulation = MODULATION_FSK;
     else RadioConfiguration.modulation = MODULATION_LORA;
     set_s("BW",&tmp8);
+//    ESP_LOGI(TAG,"BW=%d",tmp8);
     switch(tmp8)
     {
         case 0:
@@ -365,6 +371,7 @@ void RADIO_Init(uint8_t *radioBuffer, uint32_t frequency)
             RadioConfiguration.bandWidth = BW_125KHZ;
             break;
     };
+//    ESP_LOGI(TAG,"Bandwidth=%d",RadioConfiguration.bandWidth);
     set_s("POWER",&tmp8);
     RadioConfiguration.outputPower=txPowerRU864[tmp8];  // = 1;
     set_s("FEC",&RadioConfiguration.errorCodingRate); // = CR_4_5;
@@ -430,11 +437,14 @@ void RADIO_Init(uint8_t *radioBuffer, uint32_t frequency)
     // Perform image and RSSI calibration. This also puts the radio in FSK mode.
     // In order to perform image and RSSI calibration, we need the radio in
     // FSK mode. To do this, we first put it in sleep mode.
+//    ESP_LOGI(TAG,"Write mode");
     RADIO_WriteMode(MODE_STANDBY, MODULATION_FSK, 1);
 
     // Set frequency to do calibration at the configured frequency
+//    ESP_LOGI(TAG,"Write freq");
     RADIO_WriteFrequency(RadioConfiguration.frequency);
 
+//    ESP_LOGI(TAG,"Begin calibration");
     // Do not do autocalibration at runtime, start calibration now, Temp
     // threshold for monitoring 10 deg. C, Temperature monitoring enabled
     RADIO_RegisterWrite(REG_FSK_IMAGECAL, 0x42);
@@ -463,6 +473,7 @@ void RADIO_Init(uint8_t *radioBuffer, uint32_t frequency)
     // Packet mode
     RADIO_RegisterWrite(REG_FSK_PACKETCONFIG2, 1 << SHIFT6);
 
+//    ESP_LOGI(TAG,"End of calibration");
     // Go to LoRa mode for this register to be set
     RADIO_WriteMode(MODE_SLEEP, MODULATION_LORA, 1);
 
@@ -471,6 +482,7 @@ void RADIO_Init(uint8_t *radioBuffer, uint32_t frequency)
     RADIO_RegisterWrite(REG_LORA_PAYLOADMAXLENGTH, 0xFF);
 
     RadioConfiguration.regVersion = RADIO_RegisterRead(REG_VERSION);
+//    ESP_LOGI(TAG,"Exit from RADIO_Init");
 }
 
 void RADIO_SetLoRaSyncWord(uint8_t syncWord)
@@ -491,22 +503,28 @@ static void RADIO_WriteConfiguration(uint16_t symbolTimeout)
     uint8_t i;
 
     // Load configuration from RadioConfiguration_t structure into radio
+//    ESP_LOGI(TAG,"Enter in Write Configuration Modulation=%s ",MODULATION_LORA == RadioConfiguration.modulation ? "LORA " : "FSK ");
+//    ESP_LOGI(TAG,"Write mode");
     RADIO_WriteMode(MODE_SLEEP, RadioConfiguration.modulation, 0);
-    ESP_LOGI(TAG,"Modulation=%s ",MODULATION_LORA == RadioConfiguration.modulation ? "LORA " : "FSK ");
+//    ESP_LOGI(TAG,"Write freq");
     RADIO_WriteFrequency(RadioConfiguration.frequency);
     printf("F=%d ",RadioConfiguration.frequency);
+//    ESP_LOGI(TAG,"Write power");
     RADIO_WritePower(RadioConfiguration.outputPower);
     printf("P=%d ",RadioConfiguration.outputPower);
 
     if (MODULATION_LORA == RadioConfiguration.modulation)
     {
+//        ESP_LOGI(TAG,"Write syncword");
         RADIO_RegisterWrite(REG_LORA_SYNCWORD, RadioConfiguration.syncWordLoRa);
 
+//        ESP_LOGI(TAG,"Write bandwith %d,fec %d,header %d",RadioConfiguration.bandWidth,RadioConfiguration.errorCodingRate,RadioConfiguration.implicitHeaderMode);
         RADIO_RegisterWrite(REG_LORA_MODEMCONFIG1,
                 (RadioConfiguration.bandWidth << SHIFT4) |
                 (RadioConfiguration.errorCodingRate << SHIFT1) |
                 (RadioConfiguration.implicitHeaderMode & 0x01));
 
+//        ESP_LOGI(TAG,"Write datarate,crc,symboltimeout");
         RADIO_RegisterWrite(REG_LORA_MODEMCONFIG2,
                 (RadioConfiguration.dataRate << SHIFT4) |
                 ((RadioConfiguration.crcOn & 0x01) << SHIFT2) |
@@ -541,8 +559,10 @@ static void RADIO_WriteConfiguration(uint16_t symbolTimeout)
         {
             tempValue = 0;
         }
+//        ESP_LOGI(TAG,"Write hopperiod");
         RADIO_RegisterWrite(REG_LORA_HOPPERIOD, (uint8_t)tempValue);
 
+//        ESP_LOGI(TAG,"Write symboltimeoutlsb");
         RADIO_RegisterWrite(REG_LORA_SYMBTIMEOUTLSB, (symbolTimeout & 0xFF));
         printf("Symbol_Timeout=%d ",symbolTimeout);
 
@@ -569,6 +589,7 @@ static void RADIO_WriteConfiguration(uint16_t symbolTimeout)
             regValue &= ~(1 << SHIFT3);    // Clear LowDataRateOptimize
         }
         regValue |= 1 << SHIFT2;         // LNA gain set by internal AGC loop
+//        ESP_LOGI(TAG,"Write optimize values");
         RADIO_RegisterWrite(REG_LORA_MODEMCONFIG3, regValue);
 
         regValue = RADIO_RegisterRead(REG_LORA_DETECTOPTIMIZE);
@@ -577,9 +598,11 @@ static void RADIO_WriteConfiguration(uint16_t symbolTimeout)
         RADIO_RegisterWrite(REG_LORA_DETECTOPTIMIZE, regValue);
 
         // Also set DetectionThreshold value for SF7 - SF12
+//        ESP_LOGI(TAG,"Write detectionthreshold");
         RADIO_RegisterWrite(REG_LORA_DETECTIONTHRESHOLD, 0x0A);
 
         // Errata settings to mitigate spurious reception of a LoRa Signal
+//        ESP_LOGI(TAG,"begin Write values to mitigate spurious reception of a LoRa Signal");
         if (0x12 == RadioConfiguration.regVersion)
         {
             // Chip already is in sleep mode. For these BWs we don't need to
@@ -601,11 +624,14 @@ static void RADIO_WriteConfiguration(uint16_t symbolTimeout)
                 RADIO_RegisterWrite(0x31, regValue);
             }
         }
+//        ESP_LOGI(TAG,"end Write values to mitigate spurious reception of a LoRa Signal");
 
         regValue = RADIO_RegisterRead(REG_LORA_INVERTIQ);
 //        regValue &= ~(1 << SHIFT6);                                        // Clear InvertIQ bit
 //        if(mode==MODE_NETWORK_SERVER) regValue &= ~(1 << SHIFT0); else regValue |= (1 << SHIFT0);
 //        if(mode==MODE_DEVICE) regValue |= (1 << SHIFT6); else regValue &= ~(1 << SHIFT6);    // Set InvertIQ bit if needed
+
+//        ESP_LOGI(TAG,"Write iqinvert");
         if(RadioConfiguration.iqInverted & 0x01)
         {
             regValue &= ~(1 << SHIFT0);
@@ -622,9 +648,11 @@ static void RADIO_WriteConfiguration(uint16_t symbolTimeout)
         regValue = REG_LORA_INVERTIQ2_VALUE_OFF & (~((RadioConfiguration.iqInverted & 0x01) << SHIFT2));
         RADIO_RegisterWrite(REG_LORA_INVERTIQ2, regValue);
 
+//        ESP_LOGI(TAG,"Write preamblelen");
         RADIO_RegisterWrite(REG_LORA_PREAMBLEMSB, RadioConfiguration.preambleLen >> SHIFT8);
         RADIO_RegisterWrite(REG_LORA_PREAMBLELSB, RadioConfiguration.preambleLen & 0xFF);
 
+//        ESP_LOGI(TAG,"Write fifoaddr");
         RADIO_RegisterWrite(REG_LORA_FIFOADDRPTR, 0x00);
         RADIO_RegisterWrite(REG_LORA_FIFOTXBASEADDR, 0x00);
         RADIO_RegisterWrite(REG_LORA_FIFORXBASEADDR, 0x00);
@@ -632,6 +660,7 @@ static void RADIO_WriteConfiguration(uint16_t symbolTimeout)
         // Errata sensitivity increase for 500kHz BW
         if (0x12 == RadioConfiguration.regVersion)
         {
+//        	ESP_LOGI(TAG,"Write values to sensitivity increase for 500kHz BW");
             if ( (BW_500KHZ == RadioConfiguration.bandWidth) &&
                  (RadioConfiguration.frequency >= FREQ_862000KHZ) &&
                  (RadioConfiguration.frequency <= FREQ_1020000KHZ)
@@ -654,6 +683,7 @@ static void RADIO_WriteConfiguration(uint16_t symbolTimeout)
             }
 
             // LoRa Inverted Polarity 500kHz fix (May 26, 2015 document)
+//        	ESP_LOGI(TAG,"Write values to LoRa Inverted Polarity 500kHz fix (May 26, 2015 document)");
             if ((BW_500KHZ == RadioConfiguration.bandWidth) && (1 == RadioConfiguration.iqInverted))
             {
                 RADIO_RegisterWrite(0x3A, 0x65);     // Freq to time drift
@@ -667,6 +697,7 @@ static void RADIO_WriteConfiguration(uint16_t symbolTimeout)
         }
 
         // Clear all interrupts (just in case)
+//        ESP_LOGI(TAG,"Clear all interrupts");
         RADIO_RegisterWrite(REG_LORA_IRQFLAGS, 0xFF);
     }
     else
@@ -717,6 +748,7 @@ static void RADIO_WriteConfiguration(uint16_t symbolTimeout)
 
     }
     printf("\n");
+//    ESP_LOGI(TAG,"Exit from RADIO_WriteConfiguration");
 }
 
 RadioError_t RADIO_TransmitCW(void)
@@ -843,7 +875,7 @@ RadioError_t RADIO_Transmit(uint8_t *buffer, uint8_t bufferLen)
 // rxWindowSize parameter is in symbols for LoRa and ms for FSK
 RadioError_t RADIO_ReceiveStart(uint16_t rxWindowSize)
 {
-    ESP_LOGI(TAG,"Request to receive");
+//    ESP_LOGI(TAG,"Request to receive");
 	if ((RadioConfiguration.flags & RADIO_FLAG_RXDATA) != 0)
     {
         return ERR_BUFFER_LOCKED;
@@ -909,7 +941,7 @@ RadioError_t RADIO_ReceiveStart(uint16_t rxWindowSize)
             xTimerStart(RadioConfiguration.fskRxWindowTimerId,0);
         }
     }
-    ESP_LOGI(TAG,"Receiving start... ");
+    ESP_LOGI(TAG,"Receiving start... symbolTimeout=%d",rxWindowSize);
 
     if (0 != RadioConfiguration.watchdogTimerTimeout)
     {
