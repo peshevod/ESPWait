@@ -44,77 +44,6 @@ uint8_t euicmpr(GenericEui_t* eui1, GenericEui_t* eui2)
     return 0;
 }
 
-/*uint8_t selectJoinServer(void* joinServer)
-{
-    char joinName[9];
-    uint8_t eui_numbers;
-    GenericEui_t join_eeprom;
-    uint8_t jsnumber,js=0,found=0,jlast=0;
-//    printVar("before EEPROM_types=",PAR_UI32,&EEPROM_types,true,true);
-    set_s("JSNUMBER",&jsnumber);
-    set_s("JOIN0EUI",&JoinEui);
-    strcpy(joinName,"JOIN0EUI");
-    for(uint8_t j=1;j<4;j++)
-    {
-        joinName[4]=0x30 + j;
-        set_s(joinName,&(((Profile_t*)joinServer)->Eui));
-//         printVar("test j=",PAR_UI8,&j,false,false);
-//         printVar(" Eui=",PAR_EUI64,&(joinServer->Eui),true,true);
-        jlast=j;
-        if(euicmpnz(&(((Profile_t*)joinServer)->Eui)))
-        {
-            found=0;
-            eui_numbers=get_eui_numbers();
-            for(uint8_t k=0;k<eui_numbers;k++)
-            {
-                if((get_Eui(k,&join_eeprom))==ESP_OK)
-                {
-                     if(!euicmp(&(((Profile_t*)joinServer)->Eui),&(join_eeprom)) && get_EUI_type(k))
-                     {
-//                         printVar("found k=",PAR_UI8,&k,false,false);
-//                         printVar(" Eui=",PAR_EUI64,&(join_eeprom.Eui),true,true);
-                         found=1;
-                         if(jsnumber==j)
-                         {
-                             js=k;
-                             ((Profile_t*)joinServer)->DevNonce=get_DevNonce(js);
-//                             printVar("selected k=",PAR_UI8,&k,false,false);
-//                             printVar(" Eui=",PAR_EUI64,&(join_eeprom.Eui),true,true);
-                         };
-                         break;
-                     }
-                }
-                else return 0;
-            }
-            if(!found)
-            {
-                put_Eui(eui_numbers,&(((Profile_t*)joinServer)->Eui));
-                ((Profile_t*)joinServer)->DevNonce=0;
-                put_DevNonce(eui_numbers, ((Profile_t*)joinServer)->DevNonce);
-                set_EUI_type(eui_numbers);
-//                 printVar("write kfree=",PAR_UI8,&kfree,false,false);
-//                 printVar(" Eui=",PAR_EUI64,&(joinServer->Eui),true,true);
-                if(jsnumber==j)
-                {
-                    js=eui_numbers;
-//                     printVar("selected kfree=",PAR_UI8,&kfree,false,false);
-//                     printVar(" Eui=",PAR_EUI64,&(joinServer->Eui),true,true);
-                }
-                eui_numbers=increase_eui_numbers();
-                Commit_deveui();
-            }
-        }
-    }
-    if(jlast!=jsnumber)
-    {
-        get_Eui(js,&(((Profile_t*)joinServer)->Eui));
-        ((Profile_t*)joinServer)->DevNonce=get_DevNonce(js);
-    }
-    ((Profile_t*)joinServer)->js=js;
-    ESP_LOGI("eui.c","Selected JoinServer js=%d Eui=%016llX",js,((Profile_t*)joinServer)->Eui.eui);
-    return js;
-}*/
-
 void fill_devices1(void)
 {
 	EndDevice_t* dev;
@@ -144,7 +73,7 @@ void fill_devices1(void)
 			number_of_devices=i+1;
 			if(dev==NULL)
 			{
-				dev=(EndDevice_t*)malloc(sizeof(EndDevice_t));
+				dev=(EndDevice_t*)heap_caps_malloc(sizeof(EndDevice_t),MALLOC_CAP_8BIT|MALLOC_CAP_INTERNAL);
 				endDevices[i]=dev;
 			}
 //			if(euicmp(&dev->devEui,&eui))

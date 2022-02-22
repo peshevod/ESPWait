@@ -131,10 +131,10 @@ void messagePrepare( TimerHandle_t xTimer )
     eTaskState e;
     NetworkSession_t* networkSession=(NetworkSession_t*)pvTimerGetTimerID(xTimer);
     data=(DiskRecord_t*)&networkSession->currentState;
-    size_t xtotal=heap_caps_get_total_size(MALLOC_CAP_8BIT);
-    size_t xfree=heap_caps_get_free_size(MALLOC_CAP_8BIT);
-    size_t xlargest=heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
-    size_t xminimum=heap_caps_get_minimum_free_size(MALLOC_CAP_8BIT);
+    size_t xtotal=heap_caps_get_total_size(MALLOC_CAP_8BIT|MALLOC_CAP_INTERNAL);
+    size_t xfree=heap_caps_get_free_size(MALLOC_CAP_8BIT|MALLOC_CAP_INTERNAL);
+    size_t xlargest=heap_caps_get_largest_free_block(MALLOC_CAP_8BIT|MALLOC_CAP_INTERNAL);
+    size_t xminimum=heap_caps_get_minimum_free_size(MALLOC_CAP_8BIT|MALLOC_CAP_INTERNAL);
     ESP_LOGI(TAG,"---Enter in messagePrepare Total=%d Free=%d Largest=%d Minimum=%d",xtotal,xfree,xlargest,xminimum);
     if(xfree<MINIMUM_FREE_HEAP) saveSessions();
     if(data->sensors.sensor1_mode&SENSOR_MODE_ENABLE && data->sensors.sensor1_mode&SENSOR_MODE_TRIGGER && data->sensors.sensor1_evt && data->sensors.sensor1_evt)

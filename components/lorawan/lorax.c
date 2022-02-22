@@ -171,7 +171,7 @@ LorawanError_t initNetworkSession(NetworkSession_t* networkSession , EndDevice_t
     computeKeys(networkSession);
     networkSession->flags.value=0;
 
-    networkSession->sendAnswerTimerId=malloc(sizeof(SessionTimer_t));
+    networkSession->sendAnswerTimerId=heap_caps_malloc(sizeof(SessionTimer_t),MALLOC_CAP_8BIT|MALLOC_CAP_INTERNAL);
     networkSession->sendAnswerTimerId->event=0xFF;
     networkSession->sendAnswerTimerId->networkSession=(void*)networkSession;
     networkSession->sendAnswerTimerId->timer=xTimerCreate("sendAnswerTimerId",86400000,pdFALSE,networkSession->sendAnswerTimerId, LORAX_SendAnswerCallback);
@@ -355,7 +355,7 @@ uint8_t PrepareJoinAcceptFrame (NetworkSession_t* networkSession, uint8_t *macBu
     uint8_t i=0;
     if(networkSession->endDevice->version)
     {
-    	micBuffer=malloc(bufferIndex+16);
+    	micBuffer=heap_caps_malloc(bufferIndex+16,MALLOC_CAP_8BIT|MALLOC_CAP_INTERNAL);
     	micBuffer[i++]=0xFF;
     	for(uint8_t j=0;j<8;j++) micBuffer[i+j]=networkSession->joinEui.buffer[7-j];
     	i+=8;
@@ -501,7 +501,7 @@ LorawanError_t LORAX_RxDone (uint8_t* buffer, uint8_t bufferLength, int16_t rssi
         {
         	freeNetworkSession(&networkSessions[sessionNumber]);
         }
-        networkSessions[sessionNumber]=malloc(sizeof(NetworkSession_t));
+        networkSessions[sessionNumber]=heap_caps_malloc(sizeof(NetworkSession_t),MALLOC_CAP_8BIT|MALLOC_CAP_INTERNAL);
         memset(networkSessions[sessionNumber],0,sizeof(NetworkSession_t));
         ESP_LOGI(TAG,"Create new network session %d",sessionNumber);
         networkSession=networkSessions[sessionNumber];
