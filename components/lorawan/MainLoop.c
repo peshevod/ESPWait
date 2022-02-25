@@ -158,9 +158,9 @@ void LORA_TIMER(void *event_handler_arg, esp_event_base_t event_base, int32_t ev
 
 void LORA_RXDONE(void *event_handler_arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
-	ESP_LOGI(TAG,"LOA_RXDONE");
+	ESP_LOGI(TAG,"LORA_RXDONE");
 	RadioConfiguration_t** conf=(RadioConfiguration_t**)event_data;
-	ESP_LOGI(TAG,"LOA_RXDONE dataBufferLen=%d",(*conf)->dataBufferLen);
+	ESP_LOGI(TAG,"LORA_RXDONE dataBufferLen=%d",(*conf)->dataBufferLen);
 	LORAX_RxDone((*conf)->dataBuffer,(*conf)->dataBufferLen, (*conf)->RSSI, (*conf)->SNR);
 	xTimerStop(startTimerId,0);
 	esp_event_post_to(mainLoop, LORA_EVENTS, LORA_RXTIMEOUT_EVENT, NULL, 0, 0);

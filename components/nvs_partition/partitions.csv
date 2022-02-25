@@ -2,5 +2,5 @@
 # Note: if you have increased the bootloader size, make sure to update the offsets to avoid overlap
 nvs,      data, nvs,     ,        0x6000,
 phy_init, data, phy,     ,        0x1000,
-factory,  app,  factory, ,        0x170000,
+factory,  app,  factory, ,        0x180000,
 sx1276_params,data,nvs,0x3f0000,  0x10000,

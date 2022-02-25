@@ -13,7 +13,7 @@ esp_err_t resolve_host_name(const char *host, size_t hostlen, struct addrinfo **
 char* rawRead(WOLFSSL* ssl, int* content_len);
 int rawWrite(WOLFSSL* ssl, char* buf, int len);
 int my_connect(const char* host, WOLFSSL** ssl);
-void my_disconnect(int sockfd, WOLFSSL* ssl);
+void my_disconnect(int sockfd, WOLFSSL** ssl);
 int getCTX(void);
 void my_free(void** x);
 

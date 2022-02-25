@@ -50,7 +50,7 @@ static httpd_handle_t my_server;
 
 
 #define FILE_PATH_MAX (ESP_VFS_PATH_MAX + 128)
-#define SCRATCH_BUFSIZE (1280)
+#define SCRATCH_BUFSIZE (12800)
 
 #define REST_CHECK(a, str, goto_tag, ...)                                              \
     do                                                                                 \
@@ -700,7 +700,7 @@ static esp_err_t monitor_post_handler(httpd_req_t *req)
     		xTaskCreatePinnedToCore(addToDG, "addToDG", 8192, (void*)(&dev_dgkey), 5, &messageTask,0);
     	}
 		vTaskDelay(10/portTICK_PERIOD_MS);
-    	if(xSemaphoreTake(xSemaphore_Message,15000/portTICK_PERIOD_MS)==pdTRUE) ret=0;
+    	if(xSemaphoreTake(xSemaphore_Message,30000/portTICK_PERIOD_MS)==pdTRUE) ret=0;
     	else ret=-1;
 		if(xSemaphore_Message!=NULL) xSemaphoreGive(xSemaphore_Message);
 //    	ret=0;
@@ -1280,7 +1280,7 @@ static httpd_uri_t monitor_post_uri = {
 void start_my_server(void)
 {
 	my_server = NULL;
-    rest_context = calloc(1, sizeof(rest_server_context_t));
+    rest_context = malloc(sizeof(rest_server_context_t));
     REST_CHECK(rest_context, "No memory for rest context", err_start);
     strlcpy(rest_context->base_path, MOUNT_POINT, sizeof(rest_context->base_path));
     strlcat(rest_context->base_path,"/server", sizeof(rest_context->base_path));

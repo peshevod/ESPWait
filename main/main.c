@@ -284,6 +284,8 @@ static esp_err_t wifi_prepare()
 {
 	const uint16_t retries=1000;
 	uint16_t retry=retries;
+	int8_t wifi_power;
+	char country[16];
 	if(ready_to_send) return ESP_OK;
 	if(wifi_stopped)
 	{
@@ -291,7 +293,10 @@ static esp_err_t wifi_prepare()
 		esp_netif_init();
 		wifi_interface=esp_netif_create_default_wifi_sta();
 		wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+		esp_wifi_deinit();
+		vTaskDelay(100);
 		esp_wifi_init(&cfg);
+		esp_wifi_set_rssi_threshold(-100);
 		set_s("PASSWD",sta_config.sta.password);
 		set_s("SSID",sta_config.sta.ssid);
 		ESP_LOGI(__func__,"SSID=%s PASSWD=%s",sta_config.sta.ssid,sta_config.sta.password);
@@ -299,7 +304,11 @@ static esp_err_t wifi_prepare()
 		ESP_ERROR_CHECK( esp_wifi_set_config(WIFI_IF_STA, &sta_config) );
 		con=1;
 		ESP_ERROR_CHECK( esp_wifi_start() );
-//		xTaskCreatePinnedToCore(sc_init,"SC_Task",2048,NULL,tskIDLE_PRIORITY+2,NULL,0);
+		esp_wifi_set_max_tx_power(44);
+		//		xTaskCreatePinnedToCore(sc_init,"SC_Task",2048,NULL,tskIDLE_PRIORITY+2,NULL,0);
+		esp_wifi_get_max_tx_power(&wifi_power);
+		esp_wifi_get_country_code(country);
+		ESP_LOGI(__func__,"Maximum WiFi power=%d Country=%s",wifi_power,country);
 	}
 	else ESP_ERROR_CHECK( esp_wifi_connect() );
     while(!ready_to_send && retry-->0) vTaskDelay(100/portTICK_PERIOD_MS);

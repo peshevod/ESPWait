@@ -658,7 +658,7 @@ void messageTimerReset(TimerHandle_t xTimer)
 void messageReset( uint8_t exit )
 {
 	ESP_LOGI(TAG,"Enter in reset");
-	my_disconnect(sockfd,ssl);
+	my_disconnect(sockfd,&ssl);
 	my_free((void*)&content);
 	my_free((void*)&request);
 	my_free((void*)&rdata);

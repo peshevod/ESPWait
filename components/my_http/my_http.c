@@ -53,7 +53,7 @@ int myver(int preverify, WOLFSSL_X509_STORE_CTX* store)
 int getCTX(void)
 {
 	int ret;
-//	wolfSSL_Debugging_ON();
+	wolfSSL_Debugging_ON();
 
 	if(my_ctx!=NULL) return 0;
 //	method = wolfTLSv1_3_client_method(); /* use TLS v1.2 or 1.3 */
@@ -417,13 +417,13 @@ exit:
 	return -1;
 }
 
-void my_disconnect(int sockfd, WOLFSSL* ssl)
+void my_disconnect(int sockfd, WOLFSSL** ssl)
 {
-	if(ssl!=NULL)
+	if(*ssl!=NULL)
 	{
-	    wolfSSL_shutdown(ssl);
-		wolfSSL_free(ssl);
-		ssl=NULL;
+	    wolfSSL_shutdown(*ssl);
+		wolfSSL_free(*ssl);
+		*ssl=NULL;
 	}
 	if(sockfd>=0)
 	{

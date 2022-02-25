@@ -408,7 +408,7 @@ exit:
 	if(ret<0) my_free((void*)&access_token);
 	my_free((void*)&content);
 	my_free((void*)&data);
-	my_disconnect(sockfd,ssl);
+	my_disconnect(sockfd,&ssl);
 	if(json_content!=NULL) cJSON_Delete(json_content);
 	json_content=NULL;
     ESP_LOGI(TAG,"exit from getAcessToken FREE=%d",xPortGetFreeHeapSize());
