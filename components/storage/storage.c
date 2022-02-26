@@ -23,6 +23,7 @@ TaskHandle_t messageTaskHandle=NULL;
 extern uint8_t smt_running;
 extern TaskHandle_t messageTask;
 messageParams_t messageParams;
+extern uint8_t sd_ready;
 
 
 
@@ -102,19 +103,21 @@ void writeData(void* pvParams)
 			networkSession->currentState.sensors.sensor1_evt, networkSession->currentState.sensors.sensor1_cur, networkSession->currentState.sensors.sensor1_mode,
 			networkSession->currentState.sensors.sensor2_evt, networkSession->currentState.sensors.sensor2_cur, networkSession->currentState.sensors.sensor2_mode);
 
-
-	strcpy(filename,networkSession->dir);
-	uint8_t l=strlen(filename);
-	struct tm* tm0=gmtime(&networkSession->currentState.t);
-	strftime(&filename[l],sizeof(filename)-l,"/%Y%m%d.rcd",tm0);
-    FILE* f = fopen(filename, "a");
-	if (f != NULL)
-	{
-		if(fwrite(&networkSession->currentState,sizeof(networkSession->currentState),1,f)==1) ESP_LOGI(TAG, "Written %d bytes",sizeof(networkSession->currentState));
-		else ESP_LOGE(TAG, "Error writing to file %s for writing",filename);
-	}
-	else ESP_LOGE(TAG, "Failed to open file %s for writing",filename);
-	if(f!=NULL) fclose(f);
+    if(sd_ready)
+    {
+		strcpy(filename,networkSession->dir);
+		uint8_t l=strlen(filename);
+		struct tm* tm0=gmtime(&networkSession->currentState.t);
+		strftime(&filename[l],sizeof(filename)-l,"/%Y%m%d.rcd",tm0);
+		FILE* f = fopen(filename, "a");
+		if (f != NULL)
+		{
+			if(fwrite(&networkSession->currentState,sizeof(networkSession->currentState),1,f)==1) ESP_LOGI(TAG, "Written %d bytes",sizeof(networkSession->currentState));
+			else ESP_LOGE(TAG, "Error writing to file %s for writing",filename);
+		}
+		else ESP_LOGE(TAG, "Failed to open file %s for writing",filename);
+		if(f!=NULL) fclose(f);
+    }
 
 	xTimerReset(networkSession->sendMessageTimer, 0);
 

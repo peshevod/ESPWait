@@ -40,6 +40,7 @@ extern const unsigned char prvtkey_pem_start[] asm("_binary_mm304_asuscomm_com_k
 extern const unsigned char prvtkey_pem_end[]   asm("_binary_mm304_asuscomm_com_key_end");
 extern const unsigned char ca_start[]	asm("_binary_GSRootCA_txt_start");
 extern const unsigned char ca_end[] 		asm("_binary_GSRootCA_txt_end");
+extern uint8_t sd_ready;
 
 extern char* oauth2_host;
 
@@ -77,18 +78,24 @@ int getCTX(void)
 		ESP_LOGE(TAG,"Error use PrivateKey buffer");
 		goto exit;
 	}
-	if((ret=wolfSSL_CTX_load_verify_locations(my_ctx, NULL, "/sdcard/certs"))<0)
+	if(sd_ready)
 	{
-		ESP_LOGE(TAG,"Error loading cert %d", ret);
-		ret=-2;
-		goto exit;
+		if((ret=wolfSSL_CTX_load_verify_locations(my_ctx, NULL, "/sdcard/certs"))<0)
+		{
+			ESP_LOGE(TAG,"Error loading cert %d", ret);
+			ret=-2;
+			goto exit;
+		}
 	}
-/*	if((ret=wolfSSL_CTX_load_verify_buffer(my_ctx,ca_start,ca_end-ca_start,WOLFSSL_FILETYPE_PEM))<0)
+	else
 	{
-		ESP_LOGE(TAG,"Error loading cert %d", ret);
-		ret=-2;
-		goto exit;
-	}*/
+		if((ret=wolfSSL_CTX_load_verify_buffer(my_ctx,ca_start,ca_end-ca_start,WOLFSSL_FILETYPE_PEM))<0)
+		{
+			ESP_LOGE(TAG,"Error loading cert %d", ret);
+			ret=-2;
+			goto exit;
+		}
+	}
 	wolfSSL_CTX_set_verify(my_ctx, SSL_VERIFY_PEER, NULL);
 	ret=0;
 exit:

@@ -47,6 +47,7 @@ extern const unsigned char prvtkey_pem_start[] asm("_binary_mm304_asuscomm_com_k
 extern const unsigned char prvtkey_pem_end[]   asm("_binary_mm304_asuscomm_com_key_end");
 char* device_token=NULL;
 static httpd_handle_t my_server;
+extern uint8_t sd_ready;
 
 
 #define FILE_PATH_MAX (ESP_VFS_PATH_MAX + 128)
@@ -573,6 +574,7 @@ static esp_err_t devices_get_handler(httpd_req_t *req)
     uint8_t version;
     int l=0;
     char uname[16];
+    char add[16];
 
 
 
@@ -646,7 +648,8 @@ static esp_err_t devices_get_handler(httpd_req_t *req)
     }
     l=strlen(join);
     join[l-1]=0;
-    strcat(join,"]}");
+    if(sd_ready) strcat(join,"],\"SD\":\"1\"}");
+    else strcat(join,"],\"SD\":\"0\"}");
     httpd_resp_set_hdr(req, "Access-Control-Allow-Origin" , "*");
     httpd_resp_set_hdr(req, "Content-Type" , "application/json; charset=windows-1251");
 	httpd_resp_sendstr(req, join);
@@ -775,7 +778,7 @@ static esp_err_t monitor_get_handler(httpd_req_t *req)
     	}
     	if(err==ESP_OK)
 		{
-    		if(chunk==0) strcpy(join,"{\"Sessions\":[]}");else strcpy(join,"]}");
+    		if(chunk==0) strcpy(join, sd_ready ? "{\"Sessions\":[],\"SD\":\"1\"}" : "{\"Sessions\":[],\"SD\":\"0\"}");else strcpy(join,sd_ready ? "],\"SD\":\"1\"}" : "],\"SD\":\"0\"}");
     		err=httpd_resp_send_chunk(req, join, strlen(join));
     		if(err==ESP_OK)
     		{
