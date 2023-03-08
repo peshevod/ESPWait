@@ -21,8 +21,10 @@
 #include "nvs_flash.h"
 #include "esp_system.h"
 #include "esp_vfs.h"
+#include "esp_chip_info.h"
 #include "storage.h"
 #include "esp_tls.h"
+#include "private_include/esp_tls_private.h"
 #include "storage.h"
 #include "message.h"
 #include "converter.h"
@@ -123,7 +125,7 @@ static esp_err_t rest_common_get_handler(httpd_req_t *req)
     struct httpd_req_aux *ra = req->aux;
     struct sock_db *sd=ra->sd;
     esp_tls_t* tls=sd->transport_ctx;
-    WOLFSSL* ssl=tls->priv_ssl;
+    WOLFSSL* ssl=(WOLFSSL*)tls->priv_ssl;
 //    ProtocolVersion version,chVersion;
     ESP_LOGI(TAG,"Common Get Handler Connection state=%d fd=%d is_tls=%s ver=%hhd.%hhd client hello ver=%hhd.%hhd",tls->conn_state,sd->fd, (tls->is_tls ? "TLS" : "non-TLS"),ssl->version.major,ssl->version.minor,ssl->chVersion.major,ssl->chVersion.minor);
 
@@ -460,7 +462,7 @@ static esp_err_t settings_get_handler(httpd_req_t *req)
     // Channel Plan
     for(uint8_t i=0;i<MAX_RU_SINGLE_BAND_CHANNELS;i++)
     {
-    	sprintf(parstr,"\"CH%d - %dHz\",\n",i,Channels[i].frequency);
+    	sprintf(parstr,"\"CH%" PRIu16" - %" PRIu32"Hz\",\n",i,Channels[i].frequency);
 //    	ESP_LOGI(TAG,"Chanstr=%s",parstr);
     	strcat(join,parstr);
     }
@@ -506,7 +508,7 @@ static esp_err_t settings_get_handler(httpd_req_t *req)
 
     uint32_t netId;
     set_s("NETID",&netId);
-    sprintf(parstr,"\"NetID\":\"0x%08X\",\n",netId);
+    sprintf(parstr,"\"NetID\":\"0x%08" PRIx32"\",\n",netId);
     strcat(join,parstr);
 
     l=strlen(join);
@@ -874,12 +876,12 @@ static esp_err_t settings_post_handler(httpd_req_t *req)
     			par = cJSON_GetObjectItemCaseSensitive(json_content,"NetID");
     			if(par!=NULL && cJSON_IsString(par) && par->valuestring!=NULL )
     			{
-    				sscanf(par->valuestring,"0x%08X",&NetID);
+    				sscanf(par->valuestring,"0x%08" PRIx32,&NetID);
     				set_raw_par("NETID",&NetID);
     			}
     			else err0|=128;
     			cJSON_Delete(json_content);
-    			ESP_LOGI(TAG,"Channel=%d BW=%d SF=%d CRC=%d FEC=%d Power=%d HM=%d NetID=0x%08X",channel,bw,sf,crc,fec,pow,hm,NetID);
+    			ESP_LOGI(TAG,"Channel=%" PRIu16" BW=%" PRIu16" SF=%" PRIu16" CRC=%" PRIu16" FEC=%" PRIu16" Power=%" PRIu16" HM=%" PRIu16" NetID=0x%08" PRIx32,channel,bw,sf,crc,fec,pow,hm,NetID);
     			if(err0==0)
     			{
     				LORAX_Reset(ISM_RU864);

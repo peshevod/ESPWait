@@ -7,7 +7,7 @@ extern "C" {
 
 #include <time.h>
 #include "esp_err.h"
-#include "freertos.h"
+#include "freertos/FreeRTOS.h"
 #include "freertos/timers.h"
 
 

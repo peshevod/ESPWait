@@ -7,13 +7,15 @@
 #include "driver/sdmmc_host.h"
 #include "storage.h"
 #include "lorawan_types.h"
-#include "esp_log.h"
 #include "esp_err.h"
 #include "message.h"
 #include "crypto.h"
 #include "users.h"
 #include "cmd_nvs.h"
 #include "../../main/main.h"
+
+#define LOG_LOCAL_LEVEL ESP_LOG_VERBOSE
+#include "esp_log.h"
 
 static const char *TAG = "storage";
 sdmmc_card_t* card;
@@ -96,7 +98,7 @@ void writeData(void* pvParams)
     networkSession->currentState.rssi=-157 + (data->snr>=0 ? data->rssi : data->rssi+data->snr/4);
     networkSession->currentState.power=data->power;
     networkSession->currentState.sensors.value=data->sensors.value;
-    ESP_LOGI(TAG,"Received data from device Eui=%016llx devNonce=0x%04x FcntUp=0x%08x loca.Power=%d local.RSSI=%d local.SNR=%d Temperature=%d BatLevel=%d remote.RSSI=%d remote.SNR=%d remote.Power=%d Sensors1 events=%d Sensors1 cur=%d Sensors1 mode=%d Sensor2 events=%d Sensor2 cur=%d Sensor2 mode=%d",
+    ESP_LOGI(TAG,"Received data from device Eui=%016" PRIx64 " devNonce=0x%04" PRIx16 " FcntUp=0x%08" PRIx32 " loca.Power=%" PRIi16 " local.RSSI=%" PRIi16 " local.SNR=%" PRIu16 " Temperature=%" PRIi16 " BatLevel=%" PRIi16 " remote.RSSI=%" PRIi16 " remote.SNR=%" PRIi16 " remote.Power=%" PRIi16 " Sensors1 events=%" PRIi16 " Sensors1 cur=%" PRIi16 " Sensors1 mode=%" PRIi16 " Sensor2 events=%" PRIi16 " Sensor2 cur=%" PRIi16 " Sensor2 mode=%" PRIi16 ,
     		networkSession->endDevice->devEui.eui, networkSession->endDevice->devNonce, networkSession->FCntUp.value, networkSession->currentState.local_power,
 			networkSession->currentState.local_rssi, networkSession->currentState.local_snr, networkSession->currentState.temperature, networkSession->currentState.batlevel,
 			networkSession->currentState.rssi, networkSession->currentState.snr, networkSession->currentState.power,
@@ -171,11 +173,11 @@ esp_err_t getJsonData(char* user, char* role, void* pvParams,char* out, int max_
 	char str[160];
 	uint8_t usernum=get_user_number(user,role);
 	if(usernum!=0 && !in_list(usernum, networkSession->endDevice->users)) return ESP_OK;
-	sprintf(str,"{\"Device\":\"%s\",\"Sensor1\":\"%s\",\"Sensor2\":\"%s\",\"time\":\"%ld\",",networkSession->endDevice->Name, networkSession->endDevice->Sensor1, networkSession->endDevice->Sensor2, networkSession->currentState.t);
+	sprintf(str,"{\"Device\":\"%s\",\"Sensor1\":\"%s\",\"Sensor2\":\"%s\",\"time\":\"%" PRId64 "\",",networkSession->endDevice->Name, networkSession->endDevice->Sensor1, networkSession->endDevice->Sensor2, networkSession->currentState.t);
 	l=strlen(str);
 	if(l>=max_length) return ESP_ERR_INVALID_SIZE;
 	strcat(out,str);
-	sprintf(str,"\"devnonce\":\"%d\",\"fcntup\":\"%u\",",networkSession->currentState.devnonce,networkSession->currentState.fcntup);
+	sprintf(str,"\"devnonce\":\"%" PRIi16"\",\"fcntup\":\"%" PRIu32"\",",networkSession->currentState.devnonce,networkSession->currentState.fcntup);
 	l+=strlen(str);
 	if(l>=max_length) return ESP_ERR_INVALID_SIZE;
 	strcat(out,str);

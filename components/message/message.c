@@ -4,6 +4,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
+#include <inttypes.h>
 #include "message.h"
 #include "crypto.h"
 #include "users.h"
@@ -33,9 +34,8 @@
 #include "nvs_flash.h"
 #include "my_server.h"
 #include "esp_https_server.h"
-#include "Mainloop.h"
 #include "converter.h"
-
+#include "MainLoop.h"
 
 #define LOG_LOCAL_LEVEL ESP_LOG_VERBOSE
 #include "esp_log.h"
@@ -77,7 +77,7 @@ void sendMessageTask(void* pvParameters)
 	char* dgkey;
 	int retries;
 
-	ESP_LOGI(TAG,"Enter in sendMessageTask FREE=%d",xPortGetFreeHeapSize());
+	ESP_LOGI(TAG,"Enter in sendMessageTask FREE=%" PRIi32 ,xPortGetFreeHeapSize());
 	xTimerChangePeriod(messageTimer, 60000 / portTICK_PERIOD_MS, 0);
 	xTimerStart(messageTimer,0);
 	if( xSemaphoreTake( xSemaphore_Message, 10000/portTICK_PERIOD_MS ) == pdFALSE )
@@ -87,9 +87,9 @@ void sendMessageTask(void* pvParameters)
 	}
 
 	ESP_LOGI(TAG,"Begin SendMessageTask");
-	ESP_LOGI(TAG,"sendMessageTask Before stop_my_server FREE=%d",xPortGetFreeHeapSize());
+	ESP_LOGI(TAG,"sendMessageTask Before stop_my_server FREE=%" PRIi32 ,xPortGetFreeHeapSize());
 //	stop_my_server();
-	ESP_LOGI(TAG,"sendMessageTask After stop_my_server FREE=%d",xPortGetFreeHeapSize());
+	ESP_LOGI(TAG,"sendMessageTask After stop_my_server FREE=%" PRIi32 ,xPortGetFreeHeapSize());
 	ret0=0;
 	for(uint8_t i=0;i<8;i++)
 	{
@@ -141,7 +141,7 @@ begin:
 		ESP_LOGI(TAG,"Request=%s",request);
 		ESP_LOGI(TAG,"Content=%s",content);
 
-		ESP_LOGI(TAG,"sendMessageTask Before connect FREE=%d",xPortGetFreeHeapSize());
+		ESP_LOGI(TAG,"sendMessageTask Before connect FREE=%" PRIi32 ,xPortGetFreeHeapSize());
 
 		sockfd=my_connect(fcm,&ssl);
 		if(sockfd<0)
@@ -206,13 +206,13 @@ exit:
 		}
 		ret0+=ret;
 	}
-    ESP_LOGI(TAG,"exit from sendMessageTask FREE=%d",xPortGetFreeHeapSize());
+    ESP_LOGI(TAG,"exit from sendMessageTask FREE=%" PRIi32 ,xPortGetFreeHeapSize());
 	if(messageTimer!=NULL) xTimerStop(messageTimer, 0);
 	if(xSemaphoreGive(xSemaphore_Message)==pdTRUE) ESP_LOGI(TAG,"Success give Semaphore 1");
 	messageParams->ret=ret0;
-	ESP_LOGI(TAG,"sendMessageTask Before start_my_server FREE=%d",xPortGetFreeHeapSize());
+	ESP_LOGI(TAG,"sendMessageTask Before start_my_server FREE=%" PRIi32 ,xPortGetFreeHeapSize());
 //	start_my_server();
-	ESP_LOGI(TAG,"sendMessageTask After start_my_server FREE=%d",xPortGetFreeHeapSize());
+	ESP_LOGI(TAG,"sendMessageTask After start_my_server FREE=%" PRIi32 ,xPortGetFreeHeapSize());
 	vTaskDelete(NULL);
 }
 
@@ -226,7 +226,7 @@ char* getDGKey(uint8_t usernum)
     const int rsz=2048;
 	char dgkey_name[MAX_DGKEY_NAME];
 
-	ESP_LOGI(TAG,"Enter in getDGKey FREE=%d",xPortGetFreeHeapSize());
+	ESP_LOGI(TAG,"Enter in getDGKey FREE=%" PRIi32 ,xPortGetFreeHeapSize());
 	rdata=NULL;
 	request=NULL;
 	if(dgkey_store[usernum]!=NULL) return dgkey_store[usernum];
@@ -289,7 +289,7 @@ char* getDGKey(uint8_t usernum)
 exit:
 	messageReset(0);
 	if(ret<0) my_free((void*)&dgkey_store[usernum]);
-	ESP_LOGI(TAG,"Exit from getDGKey FREE=%d",xPortGetFreeHeapSize());
+	ESP_LOGI(TAG,"Exit from getDGKey FREE=%" PRIi32 ,xPortGetFreeHeapSize());
 	return dgkey_store[usernum];
 }
 
@@ -305,7 +305,7 @@ char* createDGKey(char* device_token, uint8_t usernum)
 	char unum[8];
 
 	if(device_token==NULL) return NULL;
-	ESP_LOGI(TAG,"Enterin createDGKey FREE=%d",xPortGetFreeHeapSize());
+	ESP_LOGI(TAG,"Enterin createDGKey FREE=%" PRIi32 ,xPortGetFreeHeapSize());
 	esp_err_t err=Read_str_params("DGKey_name", dgkey_name, MAX_DGKEY_NAME);
 	if(err!=ESP_OK)
 	{
@@ -383,7 +383,7 @@ char* createDGKey(char* device_token, uint8_t usernum)
 exit:
 	messageReset(0);
 	if(ret<0) my_free((void*)&dgkey_store[usernum]);
-	ESP_LOGI(TAG,"Exit from createDGKey FREE=%d",xPortGetFreeHeapSize());
+	ESP_LOGI(TAG,"Exit from createDGKey FREE=%" PRIi32 ,xPortGetFreeHeapSize());
 	return dgkey_store[usernum];
 }
 
@@ -403,7 +403,7 @@ void removeFromDG(void* pvParameters)
 	char dgkey_name[MAX_DGKEY_NAME];
 	dev_dgkey_t* dev_dgkey=(dev_dgkey_t*)pvParameters;
 
-	ESP_LOGI(TAG,"Enter in removeFromDG FREE=%d",xPortGetFreeHeapSize());
+	ESP_LOGI(TAG,"Enter in removeFromDG FREE=%" PRIi32 ,xPortGetFreeHeapSize());
 	xTimerChangePeriod(messageTimer, 30000 / portTICK_PERIOD_MS, 0);
 	xTimerStart(messageTimer,0);
 	if( xSemaphoreTake( xSemaphore_Message, 10000/portTICK_PERIOD_MS ) == pdFALSE )
@@ -486,7 +486,7 @@ void removeFromDG(void* pvParameters)
 exit:
 	my_free((void*)&dev_dgkey->device_token);
 	messageReset(1);
-	ESP_LOGI(TAG,"Exit from removeFromDG FREE=%d",xPortGetFreeHeapSize());
+	ESP_LOGI(TAG,"Exit from removeFromDG FREE=%" PRIi32 ,xPortGetFreeHeapSize());
 	vTaskDelete(NULL);
 }
 
@@ -502,7 +502,7 @@ void addToDG(void* pvParameters)
 	char dgkey_name[MAX_DGKEY_NAME];
 	dev_dgkey_t* dev_dgkey=(dev_dgkey_t*)pvParameters;
 
-	ESP_LOGI(TAG,"Enter in addToDG FREE=%d",xPortGetFreeHeapSize());
+	ESP_LOGI(TAG,"Enter in addToDG FREE=%" PRIi32 ,xPortGetFreeHeapSize());
 	xTimerChangePeriod(messageTimer, 30000 / portTICK_PERIOD_MS, 0);
 	xTimerStart(messageTimer,0);
 	if( xSemaphoreTake( xSemaphore_Message, 10000/portTICK_PERIOD_MS ) == pdFALSE )
@@ -601,7 +601,7 @@ void addToDG(void* pvParameters)
 exit:
 	my_free((void*)&dev_dgkey->device_token);
 	messageReset(1);
-	ESP_LOGI(TAG,"Exit from addToDG FREE=%d",xPortGetFreeHeapSize());
+	ESP_LOGI(TAG,"Exit from addToDG FREE=%" PRIi32 ,xPortGetFreeHeapSize());
 	vTaskDelete(NULL);
 }
 

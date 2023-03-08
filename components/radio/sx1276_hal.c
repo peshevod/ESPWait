@@ -1,5 +1,4 @@
 #include <stdint.h>
-#include "esp_log.h"
 #include "radio_registers_SX1276.h"
 #include "sx1276_hal.h"
 #include "driver/spi_master.h"
@@ -7,6 +6,9 @@
 #include "esp_event.h"
 #include "MainLoop.h"
 #include "shell.h"
+
+#define LOG_LOCAL_LEVEL ESP_LOG_VERBOSE
+#include "esp_log.h"
 
 static void spi_pre_transfer_callback(spi_transaction_t *t);
 static void spi_post_transfer_callback(spi_transaction_t *t);

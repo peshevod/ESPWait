@@ -10,13 +10,14 @@
 #include "sx1276_radio_driver.h"
 
 #include "radio_registers_SX1276.h"
-#include "SX1276_hal.h"
+#include "sx1276_hal.h"
 #include "shell.h"
-#include "esp_log.h"
 #include "esp_event.h"
 #include "lorawan_defs.h"
 #include "MainLoop.h"
 
+#define LOG_LOCAL_LEVEL ESP_LOG_VERBOSE
+#include "esp_log.h"
 
 
 
@@ -348,7 +349,7 @@ void RADIO_Init(uint8_t *radioBuffer, uint32_t frequency)
     uint32_t tmp32;
 //    ESP_LOGI(TAG,"Enter in RADIO_Init cal.freq=%d",frequency);
     RadioConfiguration.frequency = frequency;
-    ESP_LOGI(TAG,"Calibration F=%d\n",RadioConfiguration.frequency);
+    ESP_LOGI(TAG,"Calibration F=%" PRIi32"\n",RadioConfiguration.frequency);
     set_s("DEVIATION",&RadioConfiguration.frequencyDeviation); // = 25000;
     set_s("FSK_BITRATE",&RadioConfiguration.bitRate); // = 50000;
     set_s("MODULATION",&tmp8);
@@ -508,7 +509,7 @@ static void RADIO_WriteConfiguration(uint16_t symbolTimeout)
     RADIO_WriteMode(MODE_SLEEP, RadioConfiguration.modulation, 0);
 //    ESP_LOGI(TAG,"Write freq");
     RADIO_WriteFrequency(RadioConfiguration.frequency);
-    printf("F=%d ",RadioConfiguration.frequency);
+    printf("F=%" PRIu32" ",RadioConfiguration.frequency);
 //    ESP_LOGI(TAG,"Write power");
     RADIO_WritePower(RadioConfiguration.outputPower);
     printf("P=%d ",RadioConfiguration.outputPower);
@@ -992,7 +993,7 @@ static void RADIO_RxDone(void)
             ticks=rectimer_value/portTICK_PERIOD_MS-xTimerGetExpiryTime(rectimer);
             delta=(ticks-ticks_old)*portTICK_PERIOD_MS;
             ticks_old=ticks;
-            printf(" Received! delta=%d snr=%d",delta,RadioConfiguration.SNR);
+            printf(" Received! delta=%" PRIi32" snr=%" PRIi16 ,delta,RadioConfiguration.SNR);
         }
         if ((0 == RadioConfiguration.crcOn) || ((0 == (irqFlags & (1<<SHIFT5))) && (0 != (i & (1<<SHIFT6)))))
         {
@@ -1119,7 +1120,7 @@ static void RADIO_TxDone(void)
         uint32_t exp=(xTimerGetExpiryTime(RadioConfiguration.timeOnAirTimerId) - xTaskGetTickCount())*portTICK_PERIOD_MS;
     	timeOnAir = TIME_ON_AIR_LOAD_VALUE - exp;
         xTimerStop(RadioConfiguration.timeOnAirTimerId,0);
-        ESP_LOGI(TAG,"loaded %u, exp %u timeOnAir %u",TIME_ON_AIR_LOAD_VALUE,exp,timeOnAir);
+        ESP_LOGI(TAG,"loaded %" PRIu32", exp %" PRIu32" timeOnAir %" PRIu32,TIME_ON_AIR_LOAD_VALUE,exp,timeOnAir);
         esp_event_post_to(mainLoop, LORA_EVENTS, LORA_TXDONE_EVENT, &timeOnAir, sizeof(timeOnAir), 0);
     };
 }

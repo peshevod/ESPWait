@@ -24,7 +24,6 @@
 //#include "cmd_nvs.h"
 #include "esp_err.h"
 
-
 #define LOG_LOCAL_LEVEL ESP_LOG_VERBOSE
 #include "esp_log.h"
 
@@ -46,7 +45,7 @@ extern char* oauth2_host;
 
 int myver(int preverify, WOLFSSL_X509_STORE_CTX* store)
 {
-	ESP_LOGI(TAG,"Preverify=%d FREE=%d store? %s",preverify,xPortGetFreeHeapSize(),store==NULL ? "NULL" : "Not NULL");
+	ESP_LOGI(TAG,"Preverify=%" PRIi16" FREE=%" PRIu32" store? %s",preverify,xPortGetFreeHeapSize(),store==NULL ? "NULL" : "Not NULL");
 	return 1;
 }
 

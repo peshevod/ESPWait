@@ -25,6 +25,8 @@
 #include "esp_tls_wolfssl.h"
 #include "esp_tls_error_capture_internal.h"
 #include <errno.h>
+
+#define LOG_LOCAL_LEVEL ESP_LOG_VERBOSE
 #include "esp_log.h"
 
 static unsigned char *global_cacert = NULL;

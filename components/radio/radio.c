@@ -1,9 +1,11 @@
-#include "esp_log.h"
 #include "S2LP_Config.h"
 #include "radio.h"
 #include "nvs_flash.h"
 #include "cmd_nvs.h"
 #include "shell.h"
+
+#define LOG_LOCAL_LEVEL ESP_LOG_VERBOSE
+#include "esp_log.h"
 
 static const char* TAG = "Radio";
 extern uint8_t bypass_ldo;

@@ -14,5 +14,5 @@ idf_component_register(SRCS "Src/MCU_Interface.c"
 							"Src/S2LP_Timer.c"
 							"Src/S2LP_Timer_ex.c"
 							"Src/S2LP_Types.c"
-                    INCLUDE_DIRS "./Inc")
-#                    REQUIRES console nvs_flash)
+                    INCLUDE_DIRS "./Inc"
+                    REQUIRES driver)

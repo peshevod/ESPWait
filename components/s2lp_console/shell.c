@@ -15,13 +15,15 @@
 #include "freertos/semphr.h"
 #include "freertos/ringbuf.h"
 #include "freertos/timers.h"
-#include "esp_log.h"
 #include "cmd_nvs.h"
 #include "driver/uart.h"
 #include "esp_system.h"
 
 #include "sys/unistd.h"
 #include "shell.h"
+
+#define LOG_LOCAL_LEVEL ESP_LOG_VERBOSE
+#include "esp_log.h"
 
 char t[16]={'0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'};
 
@@ -30,7 +32,7 @@ char err[] = {"Error\nESPWait> "};
 char ex[] = {"Exit\n"};
 char commands[] = {'S', 'L', 'D'};
 char ver[]={"=== S2-LP shell v 1.1.5 ===\n"};
-char b[BUF_LEN], val_buf[BUF_LEN];
+static char b[BUF_LEN], val_buf[BUF_LEN];
 uint8_t show_hidden=0;
 
 static exchange_par_t z[2];

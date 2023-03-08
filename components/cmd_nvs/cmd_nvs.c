@@ -20,13 +20,16 @@
 #include "nvs_flash.h"
 #include "cmd_nvs.h"
 #include "esp_rom_sys.h"
+#include "esp_mac.h"
 #include "sdkconfig.h"
 #include "esp32/rom/ets_sys.h" // will be removed in idf v5.0
-#include "esp_log.h"
 #include "crypto.h"
 #include "shell.h"
 #include "device.h"
 #include "message.h"
+
+#define LOG_LOCAL_LEVEL ESP_LOG_VERBOSE
+#include "esp_log.h"
 
 
 const _par_t _pars[]={
@@ -65,17 +68,17 @@ const _par_t _pars[]={
 	{PAR_EUI64,"Dev1Eui",{.eui={0x20,0x37,0x11,0x32,0x11,0x26,0x00,0x20}}, "Dev1Eui 64",VISIBLE  },
 	{PAR_KEY128,"Dev1AppKey",{.key={0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x09,0x0a,0x0b,0x0c,0x0d,0x0e,0x0f,0x10}}, "Dev1 Application Key 128 bit",VISIBLE  },
 	{PAR_KEY128,"Dev1NwkKey",{.key={0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x09,0x0a,0x0b,0x0c,0x0d,0x0e,0x0f,0x10}}, "Dev1 Network Key 128 bit",VISIBLE  },
-	{PAR_STR,"Dev1Name",{.str="Дом"}, "Dev1 Name",VISIBLE  },
-	{PAR_STR,"Dev1s1",{.str="Окно"}, "Dev1 Sensor1 Name",VISIBLE  },
-	{PAR_STR,"Dev1s2",{.str="Дверь"}, "Dev1 Sensor2 Name",VISIBLE  },
+	{PAR_STR,"Dev1Name",{.str="пїЅпїЅпїЅ"}, "Dev1 Name",VISIBLE  },
+	{PAR_STR,"Dev1s1",{.str="пїЅпїЅпїЅпїЅ"}, "Dev1 Sensor1 Name",VISIBLE  },
+	{PAR_STR,"Dev1s2",{.str="пїЅпїЅпїЅпїЅпїЅ"}, "Dev1 Sensor2 Name",VISIBLE  },
 	{PAR_EUI64,"Dev1Users",{.eui={0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x00}}, "Users subscribed to device",VISIBLE },
 	{PAR_UI8,"Dev1Version",{ 0 }, "Lorawan Version of Dev: 0 - 1.0, 1 - 1.1",VISIBLE },
 	{PAR_EUI64,"Dev2Eui",{.eui={0x20,0x37,0x11,0x32,0x13,0x08,0x00,0x00}}, "Dev2Eui 64",VISIBLE  },
 	{PAR_KEY128,"Dev2AppKey",{.key={0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x09,0x0a,0x0b,0x0c,0x0d,0x0e,0x0f,0x10}}, "Dev2 Application Key 128 bit",VISIBLE  },
 	{PAR_KEY128,"Dev2NwkKey",{.key={0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x09,0x0a,0x0b,0x0c,0x0d,0x0e,0x0f,0x10}}, "Dev2 Network Key 128 bit",VISIBLE  },
-	{PAR_STR,"Dev2Name",{.str="Гараж"}, "Dev2 Name",VISIBLE  },
-	{PAR_STR,"Dev2s1",{.str="Ворота"}, "Dev2 Sensor1 Name",VISIBLE  },
-	{PAR_STR,"Dev2s2",{.str="Дверь"}, "Dev2 Sensor2 Name",VISIBLE  },
+	{PAR_STR,"Dev2Name",{.str="пїЅпїЅпїЅпїЅпїЅ"}, "Dev2 Name",VISIBLE  },
+	{PAR_STR,"Dev2s1",{.str="пїЅпїЅпїЅпїЅпїЅпїЅ"}, "Dev2 Sensor1 Name",VISIBLE  },
+	{PAR_STR,"Dev2s2",{.str="пїЅпїЅпїЅпїЅпїЅ"}, "Dev2 Sensor2 Name",VISIBLE  },
 	{PAR_UI8,"Dev2Version",{ 0 }, "Lorawan Version of Dev: 0 - 1.0, 1 - 1.1",VISIBLE },
 	{PAR_EUI64,"Dev2Users",{.eui={0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x00}}, "Users subscribed to device",VISIBLE },
 	{PAR_EUI64,"Dev3Eui",{.eui={0x20,0x37,0x11,0x32,0x11,0x15,0x00,0x60}}, "Dev3Eui 64",VISIBLE  },

@@ -18,7 +18,7 @@
 #include "esp_system.h"
 #include "esp_event.h"
 //#include "esp_event_loop.h"
-#include "esp_int_wdt.h"
+//#include "esp_int_wdt.h"
 #include "esp_task_wdt.h"
 //#include "esp_bt.h"
 //#include "esp_bt_main.h"
@@ -58,8 +58,6 @@
 #include "access.h"
 #include "esp_smartconfig.h"
 #include "message.h"
-#define LOG_LOCAL_LEVEL ESP_LOG_VERBOSE
-#include "esp_log.h"
 #include "sdmmc_cmd.h"
 #include "lorax.h"
 #include "storage.h"
@@ -67,6 +65,9 @@
 
 //#include "bt/host/bluedroid/api/include/api/esp_bt_main.h"
 //#include "soc/rtc.h"
+
+#define LOG_LOCAL_LEVEL ESP_LOG_VERBOSE
+#include "esp_log.h"
 
 #define SLEEP
 #define AWS_CLIENT_ID "721730703209"
@@ -84,7 +85,8 @@ char buf[MAX_MESSAGE_SIZE];
 char mes1[MAX_MESSAGE_SIZE];
 char mes2[MAX_MESSAGE_SIZE];
 uint8_t con,mqtt_con,aws_con;
-tcpip_adapter_if_t ifindex;
+esp_netif_t* ifindex;
+//tcpip_adapter_if_t ifindex;
 static input_data_t input_data;
 static DRAM_ATTR xQueueHandle s2lp_evt_queue = NULL;
 static wifi_config_t sta_config;
@@ -121,7 +123,7 @@ RTC_SLOW_ATTR uint32_t seq;
 RTC_SLOW_ATTR uint8_t rep;
 RTC_SLOW_ATTR uint32_t uid;
 RTC_SLOW_ATTR uint8_t cw, pn9;
-RTC_SLOW_ATTR tmode_t mode;
+RTC_SLOW_ATTR sx1276_mode_t mode;
 RTC_SLOW_ATTR uint32_t next;
 RTC_SLOW_ATTR uint64_t trans_sleep;
 RTC_SLOW_ATTR uint32_t time0;
@@ -205,7 +207,8 @@ static void event_handler(void* arg, esp_event_base_t event_base,
         ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
         ESP_LOGI("wifi handler", "got ip:%s",
         		ip4addr_ntoa((const ip4_addr_t*)(&(event->ip_info.ip))));
-        ifindex=event->if_index;
+//        ifindex=event->if_index;
+        ifindex=event->esp_netif;
         s_retry_num = 0;
         xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
         ready_to_send=1;
@@ -409,7 +412,7 @@ static void s2lp_wait()
     xTaskCreatePinnedToCore(s2lp_rec_start2, "s2lp_rec_start2", 8192, NULL, 10, NULL,0);
 	while(xQueueReceive(s2lp_evt_queue,&input_data,16000/portTICK_PERIOD_MS))
 	{
-        ESP_LOGI("s2lp_getdata","REC: Power: %d dbm 0x%08X 0x%08X 0x%08X\n",input_data.input_signal_power,input_data.seq_number,input_data.serial_number,input_data.data[0]);
+        ESP_LOGI("s2lp_getdata","REC: Power: %" PRIi32" dbm 0x%08" PRIx32" 0x%08" PRIx32" 0x%08" PRIx32"\n",input_data.input_signal_power,input_data.seq_number,input_data.serial_number,input_data.data[0]);
 		i0=test_update_table(input_data.serial_number,input_data.seq_number);
 		if(i0!=-1)
 		{
@@ -420,7 +423,7 @@ static void s2lp_wait()
 			}
 			else ESP_LOGE("s2lp_wait","Failed to send - no connection");
 		}
-		else ESP_LOGI(TAG,"DO NOT SEND: Power: %d dbm 0x%08X 0x%08X 0x%08X\n",input_data.input_signal_power,input_data.seq_number,input_data.serial_number,input_data.data[0]);
+		else ESP_LOGI(TAG,"DO NOT SEND: Power: %" PRIi32" dbm 0x%08" PRIx32" 0x%08" PRIx32" 0x%08" PRIx32"\n",input_data.input_signal_power,input_data.seq_number,input_data.serial_number,input_data.data[0]);
 	}
 	if(mqtt_con)
 	{
@@ -432,10 +435,10 @@ static void s2lp_wait()
 	wifi_unprepare();
 }
 
-static esp_err_t s2lp_start()
+/*static esp_err_t s2lp_start()
 {
 	start_s2lp_console();
-	ESP_LOGI("start1","UID=%08X",uid);
+	ESP_LOGI("start1","UID=%08" PRIx32,uid);
 
     set_s("MODE", &mode);
 
@@ -447,7 +450,7 @@ static esp_err_t s2lp_start()
 //    	s2lp_trans_start();
     }
     return ESP_OK;
-}
+}*/
 
 
 
@@ -465,7 +468,7 @@ void time_sync_notification_cb(struct timeval *tv)
 {
     if(sizeof(time_t)==4) time0=tv->tv_sec;
     else time0=*((uint32_t*)(&(tv->tv_sec)));
-    ESP_LOGI("time sync", "Notification of a time synchronization event time0=%d, %08lx",time0,tv->tv_sec);
+    ESP_LOGI("time sync", "Notification of a time synchronization event time0=%" PRIi32", %08" PRIu64 ,time0,tv->tv_sec);
 }
 
 static void initialize_sntp(void)
@@ -648,21 +651,21 @@ static void system_init()
     vTaskDelay(1000 / portTICK_PERIOD_MS);
     periph_module_reset(PERIPH_UART2_MODULE);
 	init_uart0();
-    ESP_LOGI(TAG,"After init_uart FREE=%d",xPortGetFreeHeapSize());
+    ESP_LOGI(TAG,"After init_uart FREE=%" PRIu32 ,xPortGetFreeHeapSize());
     vTaskDelay(100 / portTICK_PERIOD_MS);
 	ESP_LOGI(TAG, "System init");
     if((err = nvs_flash_init())!=ESP_OK) ESP_LOGE("main.c","Error while init default nvs err=%s\n",esp_err_to_name(err));
     Sync_EEPROM();
     //    uint8_t x=selectJoinServer((void*)&JoinServer);
-    ESP_LOGI(TAG,"After Sync EEPROM FREE=%d",xPortGetFreeHeapSize());
-    ESP_LOGI(TAG,"After fill devices FREE=%d",xPortGetFreeHeapSize());
+    ESP_LOGI(TAG,"After Sync EEPROM FREE=%" PRIu32 ,xPortGetFreeHeapSize());
+    ESP_LOGI(TAG,"After fill devices FREE=%" PRIu32 ,xPortGetFreeHeapSize());
     if(!init_sdmmc())
     {
     	ESP_LOGI(TAG,"SD card is not initialized! Is it in slot?");
     	sd_ready=0;
     }
     else sd_ready=1;
-    ESP_LOGI(TAG,"After init sdmmc FREE=%d",xPortGetFreeHeapSize());
+    ESP_LOGI(TAG,"After init sdmmc FREE=%" PRIu32 ,xPortGetFreeHeapSize());
     if(sd_ready) test_sdmmc();
    	test_spi();
    	loraInit();
@@ -673,19 +676,19 @@ static void system_init()
 		ESP_LOGE(TAG,"Error while connecting to network");
 		return;
 	}
-    ESP_LOGI(TAG,"After wifi FREE=%d",xPortGetFreeHeapSize());
+    ESP_LOGI(TAG,"After wifi FREE=%" PRIu32 ,xPortGetFreeHeapSize());
     set_global_sec();
-    ESP_LOGI(TAG,"After sntp before start server FREE=%d",xPortGetFreeHeapSize());
+    ESP_LOGI(TAG,"After sntp before start server FREE=%" PRIu32 ,xPortGetFreeHeapSize());
 	wolfSSL_Init();
-    ESP_LOGI(TAG,"After wolfSSL_Init FREE=%d",xPortGetFreeHeapSize());
+    ESP_LOGI(TAG,"After wolfSSL_Init FREE=%" PRIu32 ,xPortGetFreeHeapSize());
 	getCTX();
-    ESP_LOGI(TAG,"After getCTX FREE=%d",xPortGetFreeHeapSize());
+    ESP_LOGI(TAG,"After getCTX FREE=%" PRIu32 ,xPortGetFreeHeapSize());
 	initMessage();
-    ESP_LOGI(TAG,"After InitMessage FREE=%d",xPortGetFreeHeapSize());
+    ESP_LOGI(TAG,"After InitMessage FREE=%" PRIu32 ,xPortGetFreeHeapSize());
     get_SHAKey();
-    ESP_LOGI(TAG,"After get SHAKey FREE=%d",xPortGetFreeHeapSize());
+    ESP_LOGI(TAG,"After get SHAKey FREE=%" PRIu32 ,xPortGetFreeHeapSize());
     accessInit();
-    ESP_LOGI(TAG,"After accessInit FREE=%d",xPortGetFreeHeapSize());
+    ESP_LOGI(TAG,"After accessInit FREE=%" PRIu32 ,xPortGetFreeHeapSize());
 	if(esp_reset_reason()==ESP_RST_SW)
 	{
 		for(uint8_t i=0;i<MAX_NUMBER_OF_DEVICES;i++)
@@ -694,15 +697,15 @@ static void system_init()
 		}
 	}
     start_my_server();
-    ESP_LOGI(TAG,"after start server FREE=%d",xPortGetFreeHeapSize());
+    ESP_LOGI(TAG,"after start server FREE=%" PRIu32 ,xPortGetFreeHeapSize());
 }
 
 
 void app_main(void)
 {
-    ESP_LOGI(TAG,"start FREE=%d",xPortGetFreeHeapSize());
+    ESP_LOGI(TAG,"start FREE=%" PRIu32 ,xPortGetFreeHeapSize());
 	system_init();
-	ESP_LOGI("app_main","Reset!!! portTICK_PERIOD_MS=%d",portTICK_PERIOD_MS);
+	ESP_LOGI("app_main","Reset!!! portTICK_PERIOD_MS=%" PRIu32 ,portTICK_PERIOD_MS);
 	if(esp_reset_reason()!=ESP_RST_SW) start_s2lp_console();
 	xTaskCreatePinnedToCore(startSX1276Task,"SX1276Task",16384,NULL,tskIDLE_PRIORITY+2,&SX1276_Handle,1);
     while(1)

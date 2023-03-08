@@ -11,6 +11,8 @@
 #define WOLFSSL_TLS13
 #define WOLFSSL_EITHER_SIDE
 
+Comment //#define NO_FILESYSTEM
+
 if using SPIRAM uncomment:
 #define NO_WOLFSSL_ESP32WROOM32_CRYPT_AES
 #define NO_WOLFSSL_ESP32WROOM32_CRYPT_RSA_PRI
@@ -20,7 +22,7 @@ After #if defined(WOLFSSL_ESPIDF) comment out #define NO_WOLFSSL_DIR
 
 5. On sdcard create certs directory and place here CA certificate for server oauth2.googleapis.com - GlobalSignRootCA.cer
 
-6. D:\Espressif\esp-idf-v4.3\components\esp-tls\esp_tls_wolfssl.c
+V5.0.1 already 6. D:\Espressif\esp-idf-v4.3\components\esp-tls\esp_tls_wolfssl.c
    Correct:
 	 wolfTLSv1_2_server_method() -> wolfTLSv1_3_server_method()
 	 wolfTLSv1_2_client_method() -> wolfTLSv1_3_client_method()
@@ -38,3 +40,8 @@ After #if defined(WOLFSSL_ESPIDF) comment out #define NO_WOLFSSL_DIR
 		for first write flash uncomment #esptool_py_flash_target_image(flash sx1276_params "0x3F0000" "${CMAKE_CURRENT_SOURCE_DIR}/sx1276_params.bin")
         - execute
 		espefuse.py -p <port> set_flash_voltage 3.3V
+12. esp-idf 5.0.1 esp_tls.h строка 210
+	В esp-wolfssl/port/user_settings.h добавить #define WOLFSSL_CALLBACKS
+	вместо typedef mbedtls_ssl_hs_cb_t esp_tls_handshake_callback;
+	установить typedef HandShakeCallBack esp_tls_handshake_callback;
+	

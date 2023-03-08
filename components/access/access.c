@@ -72,7 +72,7 @@ static void prepareKey(const char* key)
 		return;
 	}
 	uint32_t key_buf_len=ret;
-	ESP_LOGI(TAG,"DER len=%d",key_buf_len);
+	ESP_LOGI(TAG,"DER len=%" PRIu32 ,key_buf_len);
 
     if((ret = wc_InitRsaKey(&rsaKey, NULL))!=0)
     {
@@ -251,8 +251,8 @@ static char* createContent(int* content_len)
 	sprintf(head,"{\"alg\":\"RS256\",\"kid\":\"%s\",\"typ\":\"JWT\"}",private_key_id);
     char* payload=malloc(512);
     uint32_t now=(uint32_t)time(NULL);
-    ESP_LOGI(TAG,"iat=%d exp=%d",now,now+3599);
-    sprintf(payload,"{\"aud\":\"%s\",\"exp\":%d,\"iat\":%d,\"iss\":\"%s\",\"scope\":\"%s\"}",token_uri,now+3599,now,client_email,scope);
+    ESP_LOGI(TAG,"iat=%" PRIu32" exp=%" PRIu32,now,now+3599);
+    sprintf(payload,"{\"aud\":\"%s\",\"exp\":%" PRIi32",\"iat\":%" PRIi32",\"iss\":\"%s\",\"scope\":\"%s\"}",token_uri,now+3599,now,client_email,scope);
     word32 lcont=75;
     word32 l=(strlen(head)+strlen(payload)+SIG_LEN)*3/2+lcont;
     uint8_t* b64head=malloc(l);
@@ -310,7 +310,7 @@ char* getAccessToken(void)
     char* data=NULL;
     cJSON *json_content=NULL;
 
-	ESP_LOGI(TAG,"Enter in getAccessToken FREE=%d",xPortGetFreeHeapSize());
+	ESP_LOGI(TAG,"Enter in getAccessToken FREE=%" PRIu32,xPortGetFreeHeapSize());
     if(access_token) return access_token;
 
     //    wolfSSL_Debugging_ON();
@@ -411,7 +411,7 @@ exit:
 	my_disconnect(sockfd,&ssl);
 	if(json_content!=NULL) cJSON_Delete(json_content);
 	json_content=NULL;
-    ESP_LOGI(TAG,"exit from getAcessToken FREE=%d",xPortGetFreeHeapSize());
+    ESP_LOGI(TAG,"exit from getAcessToken FREE=%" PRIu32,xPortGetFreeHeapSize());
     if(ret==0)
     {
     	xTimerChangePeriod(accessTimer, (expt-10)*1000 / portTICK_PERIOD_MS, 0);

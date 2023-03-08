@@ -108,7 +108,7 @@ esp_err_t Base64url_Decode(uint8_t* in, uint32_t inl, uint8_t* out, uint32_t* ou
 	else new_inl=n;
 	if((ret=Base64_Decode((byte*)new_in, (word32)new_inl, (byte*)out, (word32*)outl))!=0)
 	{
-		ESP_LOGE(TAG,"Base64url_Decode error %d instring=[%s], inl=%d, outl=%d",ret, new_in, new_inl, *outl );
+		ESP_LOGE(TAG,"Base64url_Decode error %" PRIi16" instring=[%s], inl=%" PRIi32", outl=%" PRIi32,ret, new_in, new_inl, *outl );
 		free(new_in);
 		return ESP_FAIL;
 	}

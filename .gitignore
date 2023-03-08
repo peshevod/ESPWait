@@ -7,4 +7,4 @@ README.md
 /main/certs/*
 !/main/certs/aws-root-ca.pem
 /components/my_server/certs/
-/components/message/keys/
+/components/access/keys/

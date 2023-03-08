@@ -11,7 +11,7 @@ extern LoRa_t loRa;
 
 static LorawanError_t ValidateTxPower (uint8_t txPowerNew)
 {
-    LorawanError_t result = OK;
+    LorawanError_t result = LORA_OK;
 
     if ((ISM_EU868 == loRa.ismBand) && ((TXPOWER_MIN == txPowerNew) || (txPowerNew > TXPOWER_MAX)))
     {
@@ -31,7 +31,7 @@ static void UpdateTxPower (uint8_t txPowerNew)
 
 LorawanError_t LORAX_SetTxPower (uint8_t txPowerNew)
 {
-   LorawanError_t result = OK;
+   LorawanError_t result = LORA_OK;
    int8_t txPower;
 
     if (ValidateTxPower (txPowerNew) == LORA_OK)

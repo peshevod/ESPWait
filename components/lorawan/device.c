@@ -9,7 +9,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/fcntl.h>
-#include "esp_log.h"
 #include "esp_console.h"
 #include "cmd_nvs.h"
 #include "lorawan_defs.h"
@@ -17,6 +16,9 @@
 #include "esp_err.h"
 #include "shell.h"
 #include "esp_system.h"
+
+#define LOG_LOCAL_LEVEL ESP_LOG_VERBOSE
+#include "esp_log.h"
 
 EndDevice_t* endDevices[MAX_NUMBER_OF_DEVICES];
 uint8_t number_of_devices;

@@ -17,6 +17,7 @@
 #include "freertos/task.h"
 #include "lorawan_defs.h"
 #include "lorawan_types.h"
+
 #define LOG_LOCAL_LEVEL ESP_LOG_VERBOSE
 #include "esp_log.h"
 
@@ -28,7 +29,7 @@ const BaseType_t app_cpu = 1;
 volatile RadioMode_t macState;
 extern LoRa_t loRa;
 extern uint8_t trace;
-uint8_t mode;
+extern sx1276_mode_t mode;
 extern TimerHandle_t startTimerId;
 
 ESP_EVENT_DEFINE_BASE(LORA_EVENTS);

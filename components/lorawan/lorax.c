@@ -11,7 +11,6 @@
 #include "lorax.h"
 #include "aes.h"
 #include "cmd_nvs.h"
-#include "esp_log.h"
 #include "esp_event.h"
 #include "keys.h"
 #include "MainLoop.h"
@@ -24,10 +23,13 @@
 #include "dirent.h"
 #include "../../main/main.h"
 
+#define LOG_LOCAL_LEVEL ESP_LOG_VERBOSE
+#include "esp_log.h"
+
 
 NetworkServer_t networkServer;
 //JoinServer_t joinServer;
-uint8_t number_of_devices;
+static uint8_t number_of_devices;
 extern EndDevice_t* endDevices[MAX_NUMBER_OF_DEVICES];
 NetworkSession_t *networkSessions[MAX_NUMBER_OF_DEVICES];
 //uint8_t number_of_networkSessions;
@@ -38,7 +40,7 @@ ESP_EVENT_DECLARE_BASE(LORA_EVENTS);
 extern volatile RadioMode_t macState;
 LoRa_t loRa;
 extern ChannelParams_t Channels[MAX_RU_SINGLE_BAND_CHANNELS];
-extern uint8_t mode;
+extern sx1276_mode_t mode;
 extern esp_event_loop_handle_t mainLoop;
 uint8_t aesBuffer[AES_BLOCKSIZE];
 uint8_t macBuffer[MAXIMUM_BUFFER_LENGTH];
@@ -91,7 +93,7 @@ uint32_t get_nextDevAddr(DeviceAddress_t* devaddr)
     devaddr->value++;
     devaddr->value&=~NwkID_mask;
     devaddr->value|=NwkID;
-    ESP_LOGI("get_nextDevAddr","DevAddr=0x%08x",devaddr->value);
+    ESP_LOGI("get_nextDevAddr","DevAddr=0x%08" PRIx32 ,devaddr->value);
     return devaddr->value;
 }
 
@@ -538,7 +540,7 @@ LorawanError_t LORAX_RxDone (uint8_t* buffer, uint8_t bufferLength, int16_t rssi
         }
         if(networkSession==NULL || sessionNumber==number_of_devices)
         {
-        	ESP_LOGE(TAG,"Not found session for dev address %08x",hdr->devAddr.value);
+        	ESP_LOGE(TAG,"Not found session for dev address %08" PRIx32 ,hdr->devAddr.value);
         	return NETWORK_NOT_JOINED;
         }
 
@@ -662,7 +664,7 @@ void LORAX_RxTimeout(void)
 	ESP_LOGI(TAG,"Receive start");
 }
 
-uint32_t uid;
+static uint32_t uid;
 
 int32_t delta_freq=-30000;
 

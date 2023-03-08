@@ -7,8 +7,10 @@
 
 #include "commands.h"
 #include "channels.h"
-#include "esp_log.h"
 #include "sx1276_radio_driver.h"
+
+#define LOG_LOCAL_LEVEL ESP_LOG_VERBOSE
+#include "esp_log.h"
 
 extern LoRa_t loRa;
 static const uint8_t macEndDevCmdReplyLen[] = {1, 2, 1, 2, 3, 2, 1};
@@ -70,7 +72,7 @@ void UpdateDLSettings(uint8_t dlRx2Dr, uint8_t dlRx1DrOffset)
 
 LorawanError_t ValidateDataRate (uint8_t dataRate)
 {
-    LorawanError_t result = OK;
+    LorawanError_t result = LORA_OK;
 
     if ( dataRate > DR7 )
     {
@@ -82,7 +84,7 @@ LorawanError_t ValidateDataRate (uint8_t dataRate)
 
 LorawanError_t ValidateTxPower (uint8_t txPowerNew)
 {
-    LorawanError_t result = OK;
+    LorawanError_t result = LORA_OK;
 
     if ((ISM_EU868 == loRa.ismBand) && ((TXPOWER_MIN == txPowerNew) || (txPowerNew > TXPOWER_MAX)))
     {
@@ -107,7 +109,7 @@ void UpdateTxPower (uint8_t txPowerNew)
 
 static LorawanError_t ValidateRxOffset (uint8_t rxOffset)
 {
-    LorawanError_t result =  OK;
+    LorawanError_t result =  LORA_OK;
 
     if (rxOffset > 5)
     {

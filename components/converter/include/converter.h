@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-#define LINE_MAX 1024
+//#define LINE_MAX 1024
 
 typedef struct ConvLetter {
         char    	win1251;

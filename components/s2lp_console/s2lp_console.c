@@ -12,7 +12,6 @@
 #include <string.h>
 #include <sys/fcntl.h>
 #include "esp_system.h"
-#include "esp_log.h"
 //#include "esp_console.h"
 //#include "esp_vfs_dev.h"
 #include "driver/uart.h"
@@ -25,6 +24,9 @@
 #include "s2lp_console.h"
 #include "shell.h"
 //#include "spp_server.h"
+
+#define LOG_LOCAL_LEVEL ESP_LOG_VERBOSE
+#include "esp_log.h"
 
 extern uint8_t s2lp_console_ex;
 int volatile console_fd=-1;

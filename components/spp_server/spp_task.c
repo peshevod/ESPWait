@@ -1,7 +1,7 @@
 /*
  * spp_task.c
  *
- *  Created on: 8 апр. 2020 г.
+ *  Created on: 8 пїЅпїЅпїЅ. 2020 пїЅ.
  *      Author: ilya_000
  */
 
@@ -27,8 +27,10 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "freertos/task.h"
-#include "esp_log.h"
 #include "spp_task.h"
+
+#define LOG_LOCAL_LEVEL ESP_LOG_VERBOSE
+#include "esp_log.h"
 
 static void spp_task_task_handler(void *arg);
 static bool spp_task_send_msg(spp_task_msg_t *msg);

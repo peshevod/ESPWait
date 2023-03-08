@@ -11,7 +11,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "S2LP_Config.h"
-#include "My_pins.h"
+#include "My_Pins.h"
 //#include "MCU_Interface_template.h"
 
 

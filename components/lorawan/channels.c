@@ -10,13 +10,15 @@
 #include "lorawan_types.h"
 #include "lorawan_defs.h"
 #include "channels.h"
-#include "esp_log.h"
 #include "freertos/timers.h"
 #include "shell.h"
 #include "lorax.h"
 #include "sx1276_radio_driver.h"
 #include "commands.h"
 #include "crypto.h"
+
+#define LOG_LOCAL_LEVEL ESP_LOG_VERBOSE
+#include "esp_log.h"
 
 // Channels by ism band
 ChannelParams_t Channels[MAX_RU_SINGLE_BAND_CHANNELS];

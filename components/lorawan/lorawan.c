@@ -15,12 +15,14 @@
 #include "sx1276_radio_driver.h"
 #include "aes.h"
 #include "shell.h"
-#include "esp_log.h"
 #include "eui.h"
 #include "cmd_nvs.h"
 #include "channels.h"
 #include "commands.h"
 #include "lorax.h"
+
+#define LOG_LOCAL_LEVEL ESP_LOG_VERBOSE
+#include "esp_log.h"
 
 //CID = LinkCheckReq     = 2
 //CID = LinkADRAns       = 3
@@ -32,7 +34,7 @@
 // Index in macEndDevCmdReplyLen = CID - 2
 LoRa_t loRa;
 RxAppData_t rxPayload;
-uint8_t number_of_devices;
+static uint8_t number_of_devices;
 extern Profile_t* devices;
 uint8_t aesBuffer[AES_BLOCKSIZE];
 uint32_t NetID,NwkID,NwkID_mask;
