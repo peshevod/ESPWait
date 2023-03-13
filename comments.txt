@@ -41,7 +41,6 @@ V5.0.1 already 6. D:\Espressif\esp-idf-v4.3\components\esp-tls\esp_tls_wolfssl.c
         - execute
 		espefuse.py -p <port> set_flash_voltage 3.3V
 12. esp-idf 5.0.1 esp_tls.h строка 210
-	В esp-wolfssl/port/user_settings.h добавить #define WOLFSSL_CALLBACKS
 	вместо typedef mbedtls_ssl_hs_cb_t esp_tls_handshake_callback;
-	установить typedef HandShakeCallBack esp_tls_handshake_callback;
+	установить typedef void (*esp_tls_handshake_callback)();
 	
